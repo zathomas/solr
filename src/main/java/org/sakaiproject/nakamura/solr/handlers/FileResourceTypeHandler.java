@@ -40,7 +40,7 @@ public class FileResourceTypeHandler extends DefaultResourceTypeHandler {
   public Collection<SolrInputDocument> getDocuments(Session session, Event event) {
     Collection<SolrInputDocument> docs = super.getDocuments(session, event);
     for (SolrInputDocument d : docs) {
-      String id = (String) d.getFieldValue("solr.id");
+      String id = (String) d.getFieldValue("id");
       LOGGER.info("Adding File Information to  {} ", id);
       try {
         Node n = session.getNode(id);

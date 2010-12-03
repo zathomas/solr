@@ -7,6 +7,7 @@ import com.google.common.collect.Lists;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.solr.common.SolrInputDocument;
+import org.apache.solr.schema.DateField;
 import org.osgi.service.event.Event;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
 import org.slf4j.Logger;
@@ -78,7 +79,7 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
           for (String principal : principals) {
             doc.addField("solr.readers", principal);
           }
-          doc.addField("solr.id", path);
+          doc.addField("id", path);
           documents.add(doc);
         }
       } catch (RepositoryException e) {
@@ -92,7 +93,7 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
     LOGGER.info("GetDelete for {} ", event);
     String path = (String) event.getProperty("path");
     if (path != null) {
-      return ImmutableList.of("solr.is:" + path);
+      return ImmutableList.of("id:" + path);
     } else {
       return Collections.emptyList();
     }
@@ -126,7 +127,7 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
             case PropertyType.BOOLEAN:
               return v.getBoolean();
             case PropertyType.DATE:
-              return v.getDate();
+              return new DateField().toExternal(v.getDate().getTime());
             case PropertyType.DECIMAL:
               return v.getDecimal();
             case PropertyType.DOUBLE:

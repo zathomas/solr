@@ -9,6 +9,7 @@ import org.apache.solr.core.CoreContainer;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentContext;
 import org.sakaiproject.nakamura.api.solr.SolrServerService;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 import java.io.IOException;
@@ -30,8 +31,9 @@ public class EmbeddedSolrClient implements SolrServerService {
     System.setProperty("solr.solr.home", solrHome);
     CoreContainer.Initializer initializer = new CoreContainer.Initializer();
     coreContainer = initializer.initialize();
-    server = new EmbeddedSolrServer(coreContainer, "");
-    
+    server = new EmbeddedSolrServer(coreContainer, "Nakamura");
+    LoggerFactory.getLogger(this.getClass()).info("Contans cores {} ",coreContainer.getCoreNames());
+     
   }
   
   @Deactivate

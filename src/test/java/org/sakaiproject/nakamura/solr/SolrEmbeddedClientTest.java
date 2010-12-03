@@ -2,6 +2,7 @@ package org.sakaiproject.nakamura.solr;
 
 import junit.framework.Assert;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -10,6 +11,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentContext;
 import org.xml.sax.SAXException;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Dictionary;
 import java.util.Hashtable;
@@ -32,6 +34,7 @@ public class SolrEmbeddedClientTest {
   public void testRemoteSolrClient() throws IOException, ParserConfigurationException, SAXException {
     EmbeddedSolrClient embeddedSolrClient = new EmbeddedSolrClient();
     Mockito.when(componentContext.getBundleContext()).thenReturn(bundleContext);
+    FileUtils.deleteQuietly(new File("target/slingtest"));
     Mockito.when(bundleContext.getProperty("sling.home")).thenReturn("target/slingtest");
     Dictionary<String, Object> properties = new Hashtable<String, Object>();
     Mockito.when(componentContext.getProperties()).thenReturn(properties);
