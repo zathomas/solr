@@ -64,6 +64,7 @@ public class EmbeddedSolrClient implements SolrServerService {
       LoggerFactory.getLogger(this.getClass()).info("Contans cores {} ",
           coreContainer.getCoreNames());
     } finally {
+      Thread.currentThread().setContextClassLoader(contextClassloader);
     }
 
   }

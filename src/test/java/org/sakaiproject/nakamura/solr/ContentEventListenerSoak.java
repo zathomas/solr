@@ -79,7 +79,7 @@ public class ContentEventListenerSoak {
     Random r = new Random();
     for (int j = 0; j < 100; j++) {
       int e = r.nextInt(10000);
-      LOGGER.info("Adding Events {} ",e);
+      LOGGER.debug("Adding Events {} ",e);
       for (int i = 0; i < e; i++) {
         Dictionary<String, Object> props = new Hashtable<String, Object>();
         props.put("evnumber", i);

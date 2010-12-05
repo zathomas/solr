@@ -41,28 +41,28 @@ public class FileResourceTypeHandler extends DefaultResourceTypeHandler {
     Collection<SolrInputDocument> docs = super.getDocuments(session, event);
     for (SolrInputDocument d : docs) {
       String id = (String) d.getFieldValue("id");
-      LOGGER.info("Adding File Information to  {} ", id);
+      LOGGER.debug("Adding File Information to  {} ", id);
       try {
         Node n = session.getNode(id);
         if (n.hasNode(Node.JCR_CONTENT)) {
           Node content = n.getNode(Node.JCR_CONTENT);
           if (content != null) {
-            LOGGER.info("Loading Content");
+            LOGGER.debug("Loading Content");
             for (PropertyIterator pi = content.getProperties(); pi.hasNext();) {
               Property p = pi.nextProperty();
               String mappedName = index(p);
               if (mappedName != null) {
                 for (Object o : convertToIndex(p)) {
-                  LOGGER.info("Storing {} as {} {}",new Object[]{p.getName(),mappedName,o});
+                  LOGGER.debug("Storing {} as {} {}",new Object[]{p.getName(),mappedName,o});
                   d.addField(mappedName, o);
                 }
               }
             }
           } else {
-            LOGGER.info("No Content Node found");
+            LOGGER.debug("No Content Node found");
           }
         } else {
-          LOGGER.info("Content Node not present");
+          LOGGER.debug("Content Node not present");
         }
       } catch (RepositoryException e) {
         LOGGER.error(e.getMessage(), e);

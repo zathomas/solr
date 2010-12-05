@@ -41,7 +41,7 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
       );
 
   public Collection<SolrInputDocument> getDocuments(Session session, Event event) {
-    LOGGER.info("GetDocuments for {} ", event);
+    LOGGER.debug("GetDocuments for {} ", event);
     String path = (String) event.getProperty("path");
     List<SolrInputDocument> documents = Lists.newArrayList();
     if (path != null) {
@@ -52,7 +52,7 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
           SolrInputDocument doc = new SolrInputDocument();
           int nadd = 0;
           PropertyIterator pi = n.getProperties();
-          LOGGER.info("Workign from {} ", pi);
+          LOGGER.debug("Workign from {} ", pi);
           while (pi.hasNext()) {
             Property p = pi.nextProperty();
             String name = p.getName();
@@ -61,23 +61,22 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
               try {
                 for (Object o : convertToIndex(p)) {
                   if (o != null) {
-                    LOGGER.info("Adding {} to index doc as {} ", name, o);
+                    LOGGER.debug("Adding {} to index doc as {} ", name, o);
                     doc.addField(indexName, o);
                   } else {
-                    LOGGER.info("Skipping null value for {} ", name);
+                    LOGGER.debug("Skipping null value for {} ", name);
                   }
                 }
               } catch (RepositoryException e) {
                 LOGGER.error(e.getMessage(), e);
               }
             } else {
-              LOGGER.info("Ignoring {} ", name);
+              LOGGER.debug("Ignoring {} ", name);
             }
-            nadd++;
           }
-          LOGGER.info("Added {} ", nadd);
+          LOGGER.debug("Added {} ", nadd);
           for (String principal : principals) {
-            doc.addField("solr.readers", principal);
+            doc.addField("readers", principal);
           }
           doc.addField("id", path);
           documents.add(doc);
@@ -90,7 +89,7 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
   }
 
   public Collection<String> getDeleteQueries(Session session, Event event) {
-    LOGGER.info("GetDelete for {} ", event);
+    LOGGER.debug("GetDelete for {} ", event);
     String path = (String) event.getProperty("path");
     if (path != null) {
       return ImmutableList.of("id:" + path);
@@ -113,7 +112,7 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
     } else {
       v = new Value[] { p.getValue() };
     }
-    LOGGER.info("Value is {}",v);
+    LOGGER.debug("Value is {}",v);
     return new IterableWrapper<Object>(v) {
 
       @Override
@@ -178,9 +177,7 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
       }
     }
     String mappedName = INDEX_FIELD_MAP.get(name);
-    if ( mappedName == null ) {
-      mappedName = name;
-    }
+    // only fields in the map will be used, and those are in the schema.
     return mappedName;
   }
 

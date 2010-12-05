@@ -7,14 +7,17 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
+import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
+import org.apache.felix.scr.annotations.Services;
 import org.apache.sling.jcr.api.SlingRepository;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrInputDocument;
 import org.osgi.service.event.Event;
+import org.osgi.service.event.EventConstants;
 import org.osgi.service.event.EventHandler;
 import org.sakaiproject.nakamura.api.solr.Indexer;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
@@ -41,8 +44,14 @@ import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 
 @Component(immediate = true, metatype = true)
-@Service(value=EventHandler.class)
+@Services(value={
+  @Service(value=EventHandler.class),
+  @Service(value=Indexer.class)
+})
 public class ContentEventListener implements EventHandler, Indexer, Runnable {
+
+  @Property(value = "org/apache/sling/api/resource/Resource/*", propertyPrivate = true)
+  static final String TOPICS = EventConstants.EVENT_TOPIC;
 
   private static final Logger LOGGER = LoggerFactory
       .getLogger(ContentEventListener.class);
@@ -125,7 +134,7 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
 
   public void closeWriter() throws IOException {
     if (eventWriter != null) {
-      LOGGER.info("Writer closing {} ", currentFile.getName());
+      LOGGER.debug("Writer closing {} ", currentFile.getName());
       nwrite++;
       eventWriter.append(END).append("\n");
       eventWriter.flush();
@@ -141,6 +150,7 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
 
   public void handleEvent(Event event) {
     String topic = event.getTopic();
+    LOGGER.debug("Got Event {} {} ",event, handlers);
     IndexingHandler contentIndexHandler = handlers.get(topic);
     if (contentIndexHandler != null) {
       try {
@@ -152,8 +162,9 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
   }
 
   private void saveEvent(Event event) throws IOException {
-    if (currentFile != null && currentFile.length() > 1024 * 64) {
-      LOGGER.info("Closed {} ", currentFile.getName());
+    LOGGER.debug("Save Event {} ",event);
+    if (currentFile != null && currentFile.length() > 1024 * 1024) {
+      LOGGER.debug("Closed {} ", currentFile.getName());
       nwrite++;
       eventWriter.append(END);
       eventWriter.close();
@@ -165,7 +176,7 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
     }
     if (eventWriter == null) {
       eventWriter = new FileWriter(currentFile);
-      LOGGER.info("Opened {} ", currentFile.getName());
+      LOGGER.debug("Opened {} ", currentFile.getName());
     }
     String[] properties = event.getPropertyNames();
     String[] op = new String[properties.length * 2 + 1];
@@ -194,10 +205,9 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
     while (running) {
       try {
         Event event = readEvent();
-        LOGGER.info("Got Event {}", event);
         String topic = event.getTopic();
         IndexingHandler contentIndexHandler = handlers.get(topic);
-        LOGGER.info("Got Handler {} for event {}", contentIndexHandler, event);
+        LOGGER.debug("Got Handler {} for event {}", contentIndexHandler, event);
         if (contentIndexHandler != null) {
           SolrServer service = solrServerService.getServer();
           try {
@@ -205,7 +215,7 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
             for (String deleteQuery : contentIndexHandler
                 .getDeleteQueries(session, event)) {
               if (service != null) {
-                LOGGER.info("Added delete Query {} ", deleteQuery);
+                LOGGER.debug("Added delete Query {} ", deleteQuery);
                 service.deleteByQuery(deleteQuery);
                 needsCommit = true;
               }
@@ -214,7 +224,7 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
                 session, event);
             if (service != null) {
               if (docs != null && docs.size() > 0) {
-                LOGGER.info("Adding Docs {} ", docs);
+                LOGGER.debug("Adding Docs {} ", docs);
                 service.add(docs);
                 needsCommit = true;
               }
@@ -242,7 +252,7 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
         if (running) {
           LOGGER.warn(e.getMessage(), e);
         } else {
-          LOGGER.info("Closing Down Indexer Event Queue");
+          LOGGER.debug("Closing Down Indexer Event Queue");
         }
       }
     }
@@ -318,19 +328,19 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
         }
       });
       if (files.size() > 0) {
-        LOGGER.info("Reader currently {} MB behind ", files.size());
+        LOGGER.debug("Reader currently {} MB behind ", files.size());
         currentInFile = files.get(0);
         if (eventReader != null) {
           eventReader.close();
           eventReader = null;
         }
       } else {
-        LOGGER.info("No More files ");
+        LOGGER.debug("No More files ");
         waitForWriter();
       }
     }
     if (eventReader == null) {
-      LOGGER.info("Opening New Reader {} ", currentInFile);
+      LOGGER.debug("Opening New Reader {} ", currentInFile);
       eventReader = new BufferedReader(new FileReader(currentInFile));
       lineNo = 0;
     }
@@ -338,7 +348,7 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
 
   private void nextReader() throws IOException {
     if (eventReader != null) {
-      LOGGER.info("Closing Reader File {} ", currentInFile);
+      LOGGER.debug("Closing Reader File {} ", currentInFile);
       eventReader.close();
       eventReader = null;
     }
@@ -355,7 +365,7 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
     if (running) {
       synchronized (waitingForFileLock) {
         try {
-          LOGGER.info("Waiting for more data read:{} written:{} ", nread, nwrite);
+          LOGGER.debug("Waiting for more data read:{} written:{} ", nread, nwrite);
           if (nread > nwrite) {
             // reset counters if were catching up
             nread = nwrite;

@@ -1,6 +1,8 @@
 package org.sakaiproject.nakamura.solr;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import org.apache.felix.scr.annotations.Activate;
@@ -18,7 +20,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.jcr.Node;
 import javax.jcr.RepositoryException;
@@ -29,15 +33,18 @@ import javax.jcr.Session;
 public class ResourceIndexingServiceImpl implements IndexingHandler,
     ResourceIndexingService {
 
-  private static final Object PROP_TOPICS = null;
+  private static final Object PROP_TOPICS = "resource.topics"; 
   private static final String REMOVE_TOPIC = "REMOVED";
   private static final String CREATED_TOPIC = "CREATED";
-  private static final String UPDATE_TOPIC = "UPDATED";
+  private static final String CHANGED_TOPIC = "CHANGED";
   private static final String[] DEFAULT_TOPICS = {
       "org/apache/sling/api/resource/Resource/CREATED",
-      "org/apache/sling/api/resource/Resource/REMOVED" };
+      "org/apache/sling/api/resource/Resource/REMOVED",
+      "org/apache/sling/api/resource/Resource/CHANGED"};
   private static final Logger LOGGER = LoggerFactory
       .getLogger(ResourceIndexingServiceImpl.class);
+  // these are the names of system properites.
+  private static final Set<String> SYSTEM_PROPERTIES = ImmutableSet.of( "id", "readers");
   @Reference
   protected Indexer contentIndexer;
   private String[] topics;
@@ -63,14 +70,24 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
 
   public Collection<SolrInputDocument> getDocuments(Session session, Event event) {
     String topic = event.getTopic();
-    if (topic.endsWith(UPDATE_TOPIC) || topic.endsWith(CREATED_TOPIC)) {
+    if (topic.endsWith(CHANGED_TOPIC) || topic.endsWith(CREATED_TOPIC)) {
       String path = (String) event.getProperty("path");
-      LOGGER.info("Update action at path:{}  require on {} ",path, event);
+      LOGGER.debug("Update action at path:{}  require on {} ",path, event);
       if (path != null) {
-        return getHander(session, path).getDocuments(session, event);
+        Collection<SolrInputDocument>  docs = getHander(session, path).getDocuments(session, event);
+        List<SolrInputDocument> outputDocs = Lists.newArrayList();
+        for ( SolrInputDocument doc : docs ) {
+          for ( String name : doc.getFieldNames() ) {
+            if ( !SYSTEM_PROPERTIES.contains(name)) {
+              outputDocs.add(doc);
+              break;
+            }
+          }
+        }
+        return outputDocs;
       }
     } else {
-      LOGGER.info("No update action require on {} ",event);
+      LOGGER.debug("No update action require on {} ",event);
     }
     return ImmutableList.of();
   }
@@ -79,14 +96,14 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
     try {
       while (path != null && !"/".equals(path)) {
         Node n = session.getNode(path);
-        LOGGER.info("Checking for Node at {} found {} ",path,n);
+        LOGGER.debug("Checking for Node at {} found {} ",path,n);
         if (n != null) {
           String resourceType = n.getPrimaryNodeType().getName();
           if (n.hasProperty("sling:resourceType")) {
             resourceType = n.getProperty("sling:resourceType").getString();
           }
           IndexingHandler handler = indexers.get(resourceType);
-          LOGGER.info("Handler of type {} found {} from {} ",new Object[]{resourceType, handler, indexers});
+          LOGGER.debug("Handler of type {} found {} from {} ",new Object[]{resourceType, handler, indexers});
           if (handler != null) {
             return handler;
           }
@@ -101,19 +118,19 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
 
   public Collection<String> getDeleteQueries(Session session, Event event) {
     String topic = event.getTopic();
-    if (topic.endsWith(REMOVE_TOPIC) || topic.endsWith(UPDATE_TOPIC)) {
+    if (topic.endsWith(REMOVE_TOPIC) || topic.endsWith(CHANGED_TOPIC)) {
       String path = (String) event.getProperty("path");
       if (path != null) {
           return getHander(session, path).getDeleteQueries(session, event);
        }
     } else {
-      LOGGER.info("No delete action require on {} ",event);
+      LOGGER.debug("No delete action require on {} ",event);
     }
     return ImmutableList.of();
   }
 
   public void addHandler(String key, IndexingHandler handler) {
-    LOGGER.info("Added New Indexer as {} at {} ",key, handler);
+    LOGGER.debug("Added New Indexer as {} at {} ",key, handler);
     indexers.put(key, handler);
   }
 
