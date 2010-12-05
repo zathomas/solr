@@ -1,18 +1,11 @@
 package org.sakaiproject.nakamura.solr;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
 
 public class Utils {
 
@@ -54,14 +47,6 @@ public class Utils {
                 solrHome.getAbsolutePath());
         return null;
       }
-    }
-    File solrXml = new File(solrHome, "solr.xml");
-    if ( !solrXml.exists() ) {
-      InputStream in = Utils.class.getClassLoader().getResourceAsStream("solr.xml");
-      OutputStream out = new FileOutputStream(solrXml);
-      IOUtils.copy(in,out);
-      out.close();
-      in.close();
     }
     return solrHome.getAbsolutePath();
   }

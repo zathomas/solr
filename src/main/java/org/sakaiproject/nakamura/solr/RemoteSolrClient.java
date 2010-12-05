@@ -4,6 +4,7 @@ import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Property;
+import org.apache.felix.scr.annotations.Service;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.impl.BinaryResponseParser;
 import org.apache.solr.client.solrj.impl.StreamingUpdateSolrServer;
@@ -13,31 +14,43 @@ import org.sakaiproject.nakamura.api.solr.SolrServerService;
 
 import java.io.IOException;
 import java.util.Dictionary;
-import java.util.Map;
 
-@Component(enabled = false)
+@Component(enabled = false, immediate=true, metatype=true)
+@Service(value=SolrServerService.class)
 public class RemoteSolrClient implements SolrServerService {
 
   @Property(value = "http://localhost:8983/solr")
   private static final String PROP_SOLR_URL = "remoteurl";
+  
   @Property(intValue = 1)
   private static final String PROP_MAX_RETRIES = "max.retries";
+  
   @Property(boolValue = true)
   private static final String PROP_ALLOW_COMPRESSION = "allow.compression";
+  
   @Property(boolValue = false)
   private static final String PROP_FOLLOW = "follow.redirects";
+  
   @Property(intValue = 100)
   private static final String PROP_MAX_TOTAL_CONNECTONS = "max.total.connections";
+  
   @Property(intValue = 100)
   private static final String PROP_MAX_CONNECTONS_PER_HOST = "max.connections.per.host";
+  
   @Property(intValue = 100)
   private static final String PROP_CONNECTION_TIMEOUT = "connection.timeout";
+  
   @Property(intValue = 1000)
   private static final String PROP_SO_TIMEOUT = "socket.timeout";
-  @Property(intValue=100)
-  private static final Object PROP_QUEUE_SIZE = "indexer.queue.size";
-  @Property(intValue=10)
-  private static final Object PROP_THREAD_COUNT = "indexer.thread.count";
+  
+  @Property(intValue = 100)
+  private static final String PROP_QUEUE_SIZE = "indexer.queue.size";
+  
+  @Property(intValue = 10)
+  private static final String PROP_THREAD_COUNT = "indexer.thread.count";
+  
+  
+  
   private StreamingUpdateSolrServer server;
   private String solrHome;
 

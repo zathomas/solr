@@ -41,7 +41,7 @@ import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 
 @Component(immediate = true, metatype = true)
-@Service
+@Service(value=EventHandler.class)
 public class ContentEventListener implements EventHandler, Indexer, Runnable {
 
   private static final Logger LOGGER = LoggerFactory

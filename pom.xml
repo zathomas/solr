@@ -30,10 +30,43 @@
               org.sakaiproject.nakamura.api.solr.*
 			</Export-Package>
 			<Import-Package>
+			!org.apache.noggit,
+			!com.werken.*,
+			!org.apache.log.*,
+			!org.apache.tools.ant.*,
+			!org.apache.log4j.*,
+			!jline.*,
+			!org.jdom.*,
+			!org.apache.struts.*,
+			!org.apache.commons.logging.*,
+			!org.dom4j.*,
+			!org.apache.regexp.*,
+            com.ctc.wstx.stax;resolution:=optional,
                *
-			</Import-Package>
-            <Private-Package>org.sakaiproject.nakamura.solr.*</Private-Package>
-            <Embed-Dependency></Embed-Dependency>
+             </Import-Package>
+            <Private-Package>org.sakaiproject.nakamura.solr.*, org.apache.solr.core;-split-package:=merge-first</Private-Package>
+            <Embed-Transitive>true</Embed-Transitive>
+            <Embed-Dependency>
+               solr-core,
+               solr-solrj,
+               lucene-core,
+               lucene-analyzers-common,
+               lucene-analyzers-phonetic,
+               lucene-highlighter,
+               lucene-memory,
+               lucene-misc,
+               lucene-queries,
+               lucene-spatial,
+               lucene-spellchecker,
+               zookeeper,
+               velocity,
+               oro,
+               velocity-tools,
+               commons-validator,
+               commons-digester,
+               solr-commons-csv,
+               commons-beanutils
+            </Embed-Dependency>
           </instructions>
         </configuration>
       </plugin>
@@ -61,7 +94,6 @@
       <artifactId>servlet-api</artifactId>
       <version>2.4</version>
      </dependency>
-     
      
      
     <!-- We also need slf4j -->
