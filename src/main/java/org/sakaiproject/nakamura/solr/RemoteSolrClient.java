@@ -91,7 +91,6 @@ public class RemoteSolrClient implements SolrServerService {
 
   @Deactivate
   public void deactivate(ComponentContext componentContext) {
-
   }
 
   public SolrServer getServer() {

@@ -30,9 +30,13 @@ import javax.xml.parsers.ParserConfigurationException;
 @Service(value=SolrServerService.class)
 public class EmbeddedSolrClient implements SolrServerService {
 
+  /**
+   * According to the doc, this is thread safe and must be shared between all threads.
+   */
   private EmbeddedSolrServer server;
   private String solrHome;
   private CoreContainer coreContainer;
+  private SolrCore nakamuraCore;
 
   @Activate
   public void activate(ComponentContext componentContext) throws IOException,
@@ -57,7 +61,7 @@ public class EmbeddedSolrClient implements SolrServerService {
       SolrConfig config = new NakamuraSolrConfig(loader, "solrconfig.xml",
           getStream("solrconfig.xml"));
       IndexSchema schema = new IndexSchema(config, null, getStream("schema.xml"));
-      SolrCore nakamuraCore = new SolrCore("nakamura", coreDir.getAbsolutePath(), config,
+      nakamuraCore = new SolrCore("nakamura", coreDir.getAbsolutePath(), config,
           schema, null);
       coreContainer.register("nakamura", nakamuraCore, false);
       server = new EmbeddedSolrServer(coreContainer, "nakamura");
@@ -89,6 +93,7 @@ public class EmbeddedSolrClient implements SolrServerService {
 
   @Deactivate
   public void deactivate(ComponentContext componentContext) {
+    nakamuraCore.close(); 
     coreContainer.shutdown();
   }
 
