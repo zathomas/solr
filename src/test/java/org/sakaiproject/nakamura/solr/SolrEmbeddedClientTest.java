@@ -8,6 +8,8 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.osgi.framework.BundleContext;
+import org.osgi.service.cm.Configuration;
+import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.ComponentContext;
 import org.xml.sax.SAXException;
 
@@ -25,6 +27,10 @@ public class SolrEmbeddedClientTest {
   private ComponentContext componentContext;
   @Mock
   private BundleContext bundleContext;
+  @Mock
+  private ConfigurationAdmin configurationAdmin;
+  @Mock
+  private Configuration configuration;
   
   public SolrEmbeddedClientTest() {
    MockitoAnnotations.initMocks(this);
@@ -38,6 +44,16 @@ public class SolrEmbeddedClientTest {
     Mockito.when(bundleContext.getProperty("sling.home")).thenReturn("target/slingtest");
     Dictionary<String, Object> properties = new Hashtable<String, Object>();
     Mockito.when(componentContext.getProperties()).thenReturn(properties);
+    
+    embeddedSolrClient.configurationAdmin = configurationAdmin;
+    Mockito.when(configurationAdmin.getConfiguration(EmbeddedSolrClient.class.getName()))
+        .thenReturn(null);
+    Mockito.when(
+        configurationAdmin.createFactoryConfiguration(
+            "org.apache.sling.commons.log.LogManager.factory.config", null)).thenReturn(
+        configuration);
+
+    
     embeddedSolrClient.activate(componentContext);
     Assert.assertNotNull(embeddedSolrClient.getSolrHome());
     Assert.assertNotNull(embeddedSolrClient.getServer());
