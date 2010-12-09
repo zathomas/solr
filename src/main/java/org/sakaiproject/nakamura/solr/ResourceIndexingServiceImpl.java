@@ -33,18 +33,18 @@ import javax.jcr.Session;
 public class ResourceIndexingServiceImpl implements IndexingHandler,
     ResourceIndexingService {
 
-  private static final Object PROP_TOPICS = "resource.topics"; 
+  private static final String PROP_TOPICS = "resource.topics";
   private static final String REMOVE_TOPIC = "REMOVED";
   private static final String CREATED_TOPIC = "CREATED";
   private static final String CHANGED_TOPIC = "CHANGED";
   private static final String[] DEFAULT_TOPICS = {
       "org/apache/sling/api/resource/Resource/CREATED",
       "org/apache/sling/api/resource/Resource/REMOVED",
-      "org/apache/sling/api/resource/Resource/CHANGED"};
+      "org/apache/sling/api/resource/Resource/CHANGED" };
   private static final Logger LOGGER = LoggerFactory
       .getLogger(ResourceIndexingServiceImpl.class);
   // these are the names of system properites.
-  private static final Set<String> SYSTEM_PROPERTIES = ImmutableSet.of( "id", "readers");
+  private static final Set<String> SYSTEM_PROPERTIES = ImmutableSet.of("id", "readers");
   @Reference
   protected Indexer contentIndexer;
   private String[] topics;
@@ -72,13 +72,14 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
     String topic = event.getTopic();
     if (topic.endsWith(CHANGED_TOPIC) || topic.endsWith(CREATED_TOPIC)) {
       String path = (String) event.getProperty("path");
-      LOGGER.debug("Update action at path:{}  require on {} ",path, event);
+      LOGGER.debug("Update action at path:{}  require on {} ", path, event);
       if (path != null) {
-        Collection<SolrInputDocument>  docs = getHander(session, path).getDocuments(session, event);
+        Collection<SolrInputDocument> docs = getHander(session, path).getDocuments(
+            session, event);
         List<SolrInputDocument> outputDocs = Lists.newArrayList();
-        for ( SolrInputDocument doc : docs ) {
-          for ( String name : doc.getFieldNames() ) {
-            if ( !SYSTEM_PROPERTIES.contains(name)) {
+        for (SolrInputDocument doc : docs) {
+          for (String name : doc.getFieldNames()) {
+            if (!SYSTEM_PROPERTIES.contains(name)) {
               outputDocs.add(doc);
               break;
             }
@@ -87,31 +88,32 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
         return outputDocs;
       }
     } else {
-      LOGGER.debug("No update action require on {} ",event);
+      LOGGER.debug("No update action require on {} ", event);
     }
     return ImmutableList.of();
   }
 
   private IndexingHandler getHander(Session session, String path) {
-    try {
-      while (path != null && !"/".equals(path)) {
+    while (path != null && !"/".equals(path)) {
+      try {
         Node n = session.getNode(path);
-        LOGGER.debug("Checking for Node at {} found {} ",path,n);
+        LOGGER.debug("Checking for Node at {} found {} ", path, n);
         if (n != null) {
           String resourceType = n.getPrimaryNodeType().getName();
           if (n.hasProperty("sling:resourceType")) {
             resourceType = n.getProperty("sling:resourceType").getString();
           }
           IndexingHandler handler = indexers.get(resourceType);
-          LOGGER.debug("Handler of type {} found {} from {} ",new Object[]{resourceType, handler, indexers});
+          LOGGER.debug("Handler of type {} found {} from {} ", new Object[] {
+              resourceType, handler, indexers });
           if (handler != null) {
             return handler;
           }
         }
-        path = Utils.getParentPath(path);
+      } catch (RepositoryException e) {
+        LOGGER.debug(e.getMessage(), e);
       }
-    } catch (RepositoryException e) {
-      LOGGER.info(e.getMessage(), e);
+      path = Utils.getParentPath(path);
     }
     return defaultHandler;
   }
@@ -121,16 +123,16 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
     if (topic.endsWith(REMOVE_TOPIC) || topic.endsWith(CHANGED_TOPIC)) {
       String path = (String) event.getProperty("path");
       if (path != null) {
-          return getHander(session, path).getDeleteQueries(session, event);
-       }
+        return getHander(session, path).getDeleteQueries(session, event);
+      }
     } else {
-      LOGGER.debug("No delete action require on {} ",event);
+      LOGGER.debug("No delete action require on {} ", event);
     }
     return ImmutableList.of();
   }
 
   public void addHandler(String key, IndexingHandler handler) {
-    LOGGER.debug("Added New Indexer as {} at {} ",key, handler);
+    LOGGER.debug("Added New Indexer as {} at {} ", key, handler);
     indexers.put(key, handler);
   }
 
@@ -139,6 +141,5 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
       indexers.remove(key);
     }
   }
-
 
 }

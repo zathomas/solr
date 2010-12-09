@@ -44,10 +44,7 @@ import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 
 @Component(immediate = true, metatype = true)
-@Services(value={
-  @Service(value=EventHandler.class),
-  @Service(value=Indexer.class)
-})
+@Services(value = { @Service(value = EventHandler.class), @Service(value = Indexer.class) })
 public class ContentEventListener implements EventHandler, Indexer, Runnable {
 
   @Property(value = "org/apache/sling/api/resource/Resource/*", propertyPrivate = true)
@@ -150,7 +147,7 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
 
   public void handleEvent(Event event) {
     String topic = event.getTopic();
-    LOGGER.debug("Got Event {} {} ",event, handlers);
+    LOGGER.debug("Got Event {} {} ", event, handlers);
     IndexingHandler contentIndexHandler = handlers.get(topic);
     if (contentIndexHandler != null) {
       try {
@@ -162,7 +159,7 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
   }
 
   private void saveEvent(Event event) throws IOException {
-    LOGGER.debug("Save Event {} ",event);
+    LOGGER.debug("Save Event {} ", event);
     if (currentFile != null && currentFile.length() > 1024 * 1024) {
       LOGGER.debug("Closed {} ", currentFile.getName());
       nwrite++;
@@ -216,8 +213,13 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
                 .getDeleteQueries(session, event)) {
               if (service != null) {
                 LOGGER.debug("Added delete Query {} ", deleteQuery);
-                service.deleteByQuery(deleteQuery);
-                needsCommit = true;
+                try {
+                  service.deleteByQuery(deleteQuery);
+                  needsCommit = true;
+                } catch (SolrServerException e) {
+                  LOGGER.info(" Failed to delete {}  cause :{}", deleteQuery,
+                      e.getMessage());
+                }
               }
             }
             Collection<SolrInputDocument> docs = contentIndexHandler.getDocuments(
@@ -242,8 +244,8 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
             }
           } catch (IOException e) {
             LOGGER.warn(e.getMessage(), e);
-          } catch ( SolrException e ) {
-            LOGGER.warn(e.getMessage(), e);   
+          } catch (SolrException e) {
+            LOGGER.warn(e.getMessage(), e);
           }
         } else {
           savePosition();

@@ -49,6 +49,9 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
   public Collection<SolrInputDocument> getDocuments(Session session, Event event) {
     LOGGER.debug("GetDocuments for {} ", event);
     String path = (String) event.getProperty("path");
+    if ( ignorePath(path)) {
+      return Collections.emptyList();
+    }
     List<SolrInputDocument> documents = Lists.newArrayList();
     if (path != null) {
       try {
@@ -97,11 +100,27 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
   public Collection<String> getDeleteQueries(Session session, Event event) {
     LOGGER.debug("GetDelete for {} ", event);
     String path = (String) event.getProperty("path");
-    if (path != null) {
-      return ImmutableList.of("id:" + path);
-    } else {
+    boolean ignore = ignorePath(path);
+    if ( ignore ) {
       return Collections.emptyList();
+    } else {
+      return ImmutableList.of("id:" + path);
     }
+  }
+
+  protected boolean ignorePath(String path) {
+    if (path != null) {
+      if ( path.contains("/rep:policy") ) {  
+        return true;
+      } else if ( path.contains("/jcr:content")) {
+        return true;
+      } else if ( path.startsWith("/jcr:system")) {
+        return true;     
+      }
+    } else {
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -122,8 +141,7 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
       Map<String, Boolean> readPrincipals = Maps.newHashMap();
       Session session = n.getSession();
       AccessControlManager acm = session.getAccessControlManager();
-      Node rootNode = session.getRootNode();
-      while (n != null && !rootNode.equals(n)) {
+      while (n != null ) {
         if (n.hasNode("rep:policy")) {
           try {
             Node policy = n.getNode("rep:policy");
@@ -182,26 +200,29 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
             LOGGER.info("Ignoring policy node on {} cause: {}", n.getPath(),
                 e.getMessage());
           }
-          try {
-            n = n.getParent();
-          } catch (AccessDeniedException e) {
-            LOGGER.info("Failed to get Parent node  {} cause: {}", n.getPath(),
-                e.getMessage());
-            break;
-          } catch (ItemNotFoundException e) {
-            LOGGER.info("Failed to get Parent node  {} cause: {}", n.getPath(),
-                e.getMessage());
-            break;
-          } catch (RepositoryException e) {
-            LOGGER.info("Failed to get Parent node  {} cause: {}", n.getPath(),
-                e.getMessage());
-            break;
-          }
         }
-        for (Entry<String, Boolean> readPrincipal : readPrincipals.entrySet()) {
-          if (readPrincipal.getValue()) {
-            principals.add(readPrincipal.getKey());
+        try {
+          if ( "/".equals(n.getPath()) ) {
+            break;
           }
+          n = n.getParent();
+        } catch (AccessDeniedException e) {
+          LOGGER.info("Failed to get Parent node  {} cause: {}", n.getPath(),
+              e.getMessage());
+          break;
+        } catch (ItemNotFoundException e) {
+          LOGGER.info("Failed to get Parent node  {} cause: {}", n.getPath(),
+              e.getMessage());
+          break;
+        } catch (RepositoryException e) {
+          LOGGER.info("Failed to get Parent node  {} cause: {}", n.getPath(),
+              e.getMessage());
+          break;
+        }
+      }
+      for (Entry<String, Boolean> readPrincipal : readPrincipals.entrySet()) {
+        if (readPrincipal.getValue()) {
+          principals.add(readPrincipal.getKey());
         }
       }
     } catch (RepositoryException e) {
