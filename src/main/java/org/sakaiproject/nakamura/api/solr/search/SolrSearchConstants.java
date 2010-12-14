@@ -30,9 +30,18 @@ public interface SolrSearchConstants {
   *
   */
   public static final String PARAMS_PAGE = "page";
+  /**
+   * 
+   */
   public static final String REG_PROCESSOR_NAMES = "sakai.search.processor";
+  /**
+   * 
+   */
   public static final String REG_BATCH_PROCESSOR_NAMES = "sakai.search.batchprocessor";
 
+  /**
+   * 
+   */
   public static final String REG_PROVIDER_NAMES = "sakai.search.provider";
   /**
   *
@@ -46,8 +55,17 @@ public interface SolrSearchConstants {
    * Property that defines whether the results should have a limit on it.
    */
   public static final String SAKAI_LIMIT_RESULTS = "sakai:limit-results";
+  /**
+   * 
+   */
   public static final String SAKAI_PROPERTY_PROVIDER = "sakai:propertyprovider";
+  /**
+   * 
+   */
   public static final String SAKAI_RESULTPROCESSOR = "sakai:resultprocessor";
+  /**
+   * 
+   */
   public static final String SAKAI_BATCHRESULTPROCESSOR = "sakai:batchresultprocessor";
   /**
   *
@@ -69,8 +87,12 @@ public interface SolrSearchConstants {
   *
   */
   public static final String TOTAL = "total";
-
-  
+  /**
+   * 
+   */
   public static final String TIDY = "tidy";
+  /**
+   * 
+   */
   public static final String INFINITY = "infinity";
 }

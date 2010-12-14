@@ -33,6 +33,7 @@ import org.sakaiproject.nakamura.api.solr.search.ResourceJsonWriter;
 import org.sakaiproject.nakamura.api.solr.search.Result;
 import org.sakaiproject.nakamura.api.solr.search.SolrSearchBatchResultProcessor;
 import org.sakaiproject.nakamura.api.solr.search.SolrSearchConstants;
+import org.sakaiproject.nakamura.api.solr.search.SolrSearchException;
 import org.sakaiproject.nakamura.api.solr.search.SolrSearchResultSet;
 import org.sakaiproject.nakamura.api.solr.search.SolrSearchServiceFactory;
 import org.sakaiproject.nakamura.api.solr.search.SolrSearchUtil;
@@ -93,7 +94,7 @@ public class DefaultSearchBatchResultProcessor implements
   }
 
 
-  public SolrSearchResultSet getSearchResultSet(SlingHttpServletRequest request, String query) {
+  public SolrSearchResultSet getSearchResultSet(SlingHttpServletRequest request, String query) throws SolrSearchException {
     return searchServiceFactory.getSearchResultSet(request, query);  }
 
 }

@@ -29,6 +29,7 @@ import org.apache.sling.commons.json.io.JSONWriter;
 import org.sakaiproject.nakamura.api.solr.search.ResourceJsonWriter;
 import org.sakaiproject.nakamura.api.solr.search.Result;
 import org.sakaiproject.nakamura.api.solr.search.SolrSearchConstants;
+import org.sakaiproject.nakamura.api.solr.search.SolrSearchException;
 import org.sakaiproject.nakamura.api.solr.search.SolrSearchResultProcessor;
 import org.sakaiproject.nakamura.api.solr.search.SolrSearchResultSet;
 import org.sakaiproject.nakamura.api.solr.search.SolrSearchServiceFactory;
@@ -64,7 +65,7 @@ public class DefaultSearchResultProcessor implements SolrSearchResultProcessor {
 
 
   public SolrSearchResultSet getSearchResultSet(SlingHttpServletRequest request,
-      String queryString) {
+      String queryString) throws SolrSearchException {
     return searchServiceFactory.getSearchResultSet(request, queryString);
   }
 

@@ -14,6 +14,6 @@ public interface SolrSearchBatchResultProcessor {
       Iterator<Result> iterator);
 
   SolrSearchResultSet getSearchResultSet(SlingHttpServletRequest request,
-      String queryString);
+      String queryString) throws SolrSearchException;
 
 }
