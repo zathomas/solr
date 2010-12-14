@@ -5,7 +5,7 @@ import org.apache.sling.commons.json.io.JSONWriter;
 
 public interface SolrSearchResultProcessor {
 
-  String DEFAULT_PROCESSOR_PROP = "sakai.search.processor.default";
+  String DEFAULT_PROCESSOR_PROP = "sakai.solr.search.processor.default";
 
   SolrSearchResultSet getSearchResultSet(SlingHttpServletRequest request,
       String queryString) throws SolrSearchException;

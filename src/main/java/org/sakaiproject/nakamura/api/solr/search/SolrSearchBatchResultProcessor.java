@@ -7,7 +7,7 @@ import java.util.Iterator;
 
 public interface SolrSearchBatchResultProcessor {
 
-  String DEFAULT_BATCH_PROCESSOR_PROP = "sakai.search.processor.batch.default";
+  String DEFAULT_BATCH_PROCESSOR_PROP = "sakai.solr.search.processor.batch.default";
 
 
   void writeResults(SlingHttpServletRequest request, JSONWriter write,

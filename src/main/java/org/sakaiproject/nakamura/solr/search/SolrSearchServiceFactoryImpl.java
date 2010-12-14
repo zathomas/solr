@@ -45,7 +45,7 @@ public class SolrSearchServiceFactoryImpl implements SolrSearchServiceFactory {
       solrQuery.setRows((int) ranges[1]);
 
       // apply readers restrictions.
-      Session session = request.adaptTo(Session.class);
+      Session session = request.getResourceResolver().adaptTo(Session.class);
       UserManager userManager = AccessControlUtil.getUserManager(session);
       User user = (User) userManager.getAuthorizable(session.getUserID());
       List<String> readers = Lists.newArrayList();

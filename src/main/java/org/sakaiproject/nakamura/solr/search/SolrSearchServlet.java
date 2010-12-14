@@ -627,6 +627,16 @@ public class SolrSearchServlet extends SlingSafeMethodsServlet {
     return (T) o;
   }
 
+  private String[] getSetting(Object o, String[] defaultValue) {
+    if (o == null) {
+      return defaultValue;
+    }
+    if (o.getClass().isArray()) {
+      return (String[]) o;      
+    }
+    return new String[]{(String) o};
+  }
+
   /**
    * @param serviceReference
    */
