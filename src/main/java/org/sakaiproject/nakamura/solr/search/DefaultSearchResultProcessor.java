@@ -25,6 +25,7 @@ import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.commons.json.JSONException;
 import org.apache.sling.commons.json.io.JSONWriter;
 import org.sakaiproject.nakamura.api.resource.lite.ResourceJsonWriter;
 import org.sakaiproject.nakamura.api.solr.search.Result;
@@ -69,7 +70,7 @@ public class DefaultSearchResultProcessor implements SolrSearchResultProcessor {
     return searchServiceFactory.getSearchResultSet(request, queryString);
   }
 
-  public void writeResult(SlingHttpServletRequest request, JSONWriter write, Result result) {
+  public void writeResult(SlingHttpServletRequest request, JSONWriter write, Result result) throws JSONException {
 
     int maxTraversalDepth = SolrSearchUtil.getTraversalDepth(request);
     ResourceResolver resolver = request.getResourceResolver();

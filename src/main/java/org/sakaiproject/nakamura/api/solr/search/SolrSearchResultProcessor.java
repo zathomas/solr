@@ -1,6 +1,7 @@
 package org.sakaiproject.nakamura.api.solr.search;
 
 import org.apache.sling.api.SlingHttpServletRequest;
+import org.apache.sling.commons.json.JSONException;
 import org.apache.sling.commons.json.io.JSONWriter;
 
 public interface SolrSearchResultProcessor {
@@ -10,6 +11,6 @@ public interface SolrSearchResultProcessor {
   SolrSearchResultSet getSearchResultSet(SlingHttpServletRequest request,
       String queryString) throws SolrSearchException;
 
-  void writeResult(SlingHttpServletRequest request, JSONWriter write, Result result);
+  void writeResult(SlingHttpServletRequest request, JSONWriter write, Result result) throws JSONException;
 
 }

@@ -28,6 +28,7 @@ import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.commons.json.JSONException;
 import org.apache.sling.commons.json.io.JSONWriter;
 import org.sakaiproject.nakamura.api.resource.lite.ResourceJsonWriter;
 import org.sakaiproject.nakamura.api.solr.search.Result;
@@ -74,7 +75,7 @@ public class DefaultSearchBatchResultProcessor implements
 
 
   public void writeResults(SlingHttpServletRequest request, JSONWriter write,
-      Iterator<Result> iterator) {
+      Iterator<Result> iterator) throws JSONException {
     ResourceResolver resolver = request.getResourceResolver();
     
     
