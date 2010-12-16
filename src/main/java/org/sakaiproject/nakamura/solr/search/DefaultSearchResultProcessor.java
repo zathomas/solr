@@ -26,7 +26,7 @@ import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.commons.json.io.JSONWriter;
-import org.sakaiproject.nakamura.api.solr.search.ResourceJsonWriter;
+import org.sakaiproject.nakamura.api.resource.lite.ResourceJsonWriter;
 import org.sakaiproject.nakamura.api.solr.search.Result;
 import org.sakaiproject.nakamura.api.solr.search.SolrSearchConstants;
 import org.sakaiproject.nakamura.api.solr.search.SolrSearchException;
