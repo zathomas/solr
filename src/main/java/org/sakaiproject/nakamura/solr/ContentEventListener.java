@@ -19,9 +19,15 @@ import org.apache.solr.common.SolrInputDocument;
 import org.osgi.service.event.Event;
 import org.osgi.service.event.EventConstants;
 import org.osgi.service.event.EventHandler;
+import org.sakaiproject.nakamura.api.lite.ClientPoolException;
+import org.sakaiproject.nakamura.api.lite.Repository;
+import org.sakaiproject.nakamura.api.lite.StorageClientException;
+import org.sakaiproject.nakamura.api.lite.accesscontrol.AccessDeniedException;
 import org.sakaiproject.nakamura.api.solr.Indexer;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
+import org.sakaiproject.nakamura.api.solr.RepositorySession;
 import org.sakaiproject.nakamura.api.solr.SolrServerService;
+import org.sakaiproject.nakamura.api.solr.TopicIndexer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +51,7 @@ import javax.jcr.Session;
 
 @Component(immediate = true, metatype = true)
 @Services(value = { @Service(value = EventHandler.class), @Service(value = Indexer.class) })
-public class ContentEventListener implements EventHandler, Indexer, Runnable {
+public class ContentEventListener implements EventHandler, TopicIndexer, Runnable {
 
   @Property(value = "org/apache/sling/api/resource/Resource/*", propertyPrivate = true)
   static final String TOPICS = EventConstants.EVENT_TOPIC;
@@ -60,6 +66,9 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
 
   @Reference
   protected SlingRepository repository;
+
+  @Reference
+  protected Repository sparseRepository;
 
   private Map<String, IndexingHandler> handlers = Maps.newConcurrentHashMap();
 
@@ -89,10 +98,28 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
 
   private long nwrite;
 
+  private org.sakaiproject.nakamura.api.lite.Session sparseSession;
+
+  private RepositorySession repositorySession;
+
   @Activate
   protected void activate(Map<String, Object> properties) throws RepositoryException,
-      IOException {
+      IOException, ClientPoolException, StorageClientException, AccessDeniedException {
     session = repository.loginAdministrative(null);
+    sparseSession = sparseRepository.loginAdministrative();
+    repositorySession = new RepositorySession() {
+      
+      @SuppressWarnings("unchecked")
+      public <T> T adaptTo(Class<T> c) {
+        if ( c.equals(Session.class)) {
+          return (T) session;
+        } 
+        if ( c.equals(org.sakaiproject.nakamura.api.lite.Session.class)) {
+          return (T) sparseSession;
+        }
+        return null;
+      }
+    };
     logDirectory = new File(solrServerService.getSolrHome(), "indexq");
     positionFile = new File(solrServerService.getSolrHome(), "indexqpos");
     if (!logDirectory.isDirectory()) {
@@ -123,6 +150,13 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
   protected void deactivate(Map<String, Object> properties) throws IOException {
     if (session != null) {
       session.logout();
+    }
+    if (sparseSession != null) {
+      try {
+        sparseSession.logout();
+      } catch (ClientPoolException e) {
+        LOGGER.warn(e.getMessage(), e);
+      }
     }
     closeWriter();
     running = false;
@@ -210,7 +244,7 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
           try {
             boolean needsCommit = false;
             for (String deleteQuery : contentIndexHandler
-                .getDeleteQueries(session, event)) {
+                .getDeleteQueries(repositorySession, event)) {
               if (service != null) {
                 LOGGER.debug("Added delete Query {} ", deleteQuery);
                 try {
@@ -222,8 +256,7 @@ public class ContentEventListener implements EventHandler, Indexer, Runnable {
                 }
               }
             }
-            Collection<SolrInputDocument> docs = contentIndexHandler.getDocuments(
-                session, event);
+            Collection<SolrInputDocument> docs = contentIndexHandler.getDocuments(repositorySession, event);
             if (service != null) {
               if (docs != null && docs.size() > 0) {
                 LOGGER.debug("Adding Docs {} ", docs);

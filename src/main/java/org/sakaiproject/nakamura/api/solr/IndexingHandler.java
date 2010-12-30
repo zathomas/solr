@@ -5,12 +5,10 @@ import org.osgi.service.event.Event;
 
 import java.util.Collection;
 
-import javax.jcr.Session;
-
 public interface IndexingHandler {
 
-  Collection<SolrInputDocument> getDocuments(Session session, Event event);
+  Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession, Event event);
 
-  Collection<String> getDeleteQueries(Session session, Event event);
+  Collection<String> getDeleteQueries(RepositorySession respositorySession, Event event);
 
 }

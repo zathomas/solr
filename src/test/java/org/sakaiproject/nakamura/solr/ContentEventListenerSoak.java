@@ -7,7 +7,11 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.osgi.service.event.Event;
+import org.sakaiproject.nakamura.api.lite.ClientPoolException;
+import org.sakaiproject.nakamura.api.lite.StorageClientException;
+import org.sakaiproject.nakamura.api.lite.accesscontrol.AccessDeniedException;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
+import org.sakaiproject.nakamura.api.solr.RepositorySession;
 import org.sakaiproject.nakamura.api.solr.SolrServerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +39,7 @@ public class ContentEventListenerSoak {
   @Mock
   private Session session;
   
-  public static void main(String[] argv) throws IOException, ParserConfigurationException, SAXException, RepositoryException, InterruptedException {
+  public static void main(String[] argv) throws IOException, ParserConfigurationException, SAXException, RepositoryException, InterruptedException, ClientPoolException, StorageClientException, AccessDeniedException {
     ContentEventListenerSoak s = new ContentEventListenerSoak();
     s.testContentEventListener();
   }
@@ -46,7 +50,7 @@ public class ContentEventListenerSoak {
   }
 
   public void testContentEventListener() throws IOException, RepositoryException,
-      InterruptedException {
+      InterruptedException, ClientPoolException, StorageClientException, AccessDeniedException {
     final ContentEventListener contentEventListener = new ContentEventListener();
     contentEventListener.repository = repository;
 
@@ -67,13 +71,14 @@ public class ContentEventListenerSoak {
 
     IndexingHandler h =  new IndexingHandler() {
       
-      public Collection<SolrInputDocument> getDocuments(Session session, Event event) {
+      public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession, Event event) {
         return new ArrayList<SolrInputDocument>();
       }
       
-      public Collection<String> getDeleteQueries(Session session, Event event) {
+      public Collection<String> getDeleteQueries(RepositorySession repositorySession, Event event) {
         return new ArrayList<String>();
       }
+
     };
     contentEventListener.addHandler("test/topic",h);
     Random r = new Random();

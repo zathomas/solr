@@ -8,8 +8,13 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.osgi.service.event.Event;
+import org.sakaiproject.nakamura.api.lite.ClientPoolException;
+import org.sakaiproject.nakamura.api.lite.StorageClientException;
+import org.sakaiproject.nakamura.api.lite.accesscontrol.AccessDeniedException;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
+import org.sakaiproject.nakamura.api.solr.RepositorySession;
 import org.sakaiproject.nakamura.api.solr.SolrServerService;
+import org.sakaiproject.nakamura.lite.BaseMemoryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
@@ -39,16 +44,19 @@ public class ContentEventListenerTest {
   private SolrServerService solrServerService;
   @Mock
   private SolrServer server;
+  private BaseMemoryRepository baseMemoryRepository;
 
   public ContentEventListenerTest() throws IOException, ParserConfigurationException,
-      SAXException {
+      SAXException, ClientPoolException, StorageClientException, AccessDeniedException, ClassNotFoundException {
     MockitoAnnotations.initMocks(this);
+    baseMemoryRepository = new BaseMemoryRepository();
   }
 
   @Test
   public void testContentEventListener() throws IOException, RepositoryException,
-      InterruptedException {
+      InterruptedException, ClientPoolException, StorageClientException, AccessDeniedException {
     final ContentEventListener contentEventListener = new ContentEventListener();
+    contentEventListener.sparseRepository = baseMemoryRepository.getRepository();
     contentEventListener.repository = repository;
 
     contentEventListener.solrServerService = solrServerService;
@@ -61,13 +69,14 @@ public class ContentEventListenerTest {
 
     IndexingHandler h =  new IndexingHandler() {
       
-      public Collection<SolrInputDocument> getDocuments(Session session, Event event) {
+      public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession, Event event) {
         return new ArrayList<SolrInputDocument>();
       }
       
-      public Collection<String> getDeleteQueries(Session session, Event event) {
+      public Collection<String> getDeleteQueries(RepositorySession repositorySession, Event event) {
         return new ArrayList<String>();
       }
+
     };
     contentEventListener.addHandler("test/topic",h);
     for (int j = 0; j < 10; j++) {

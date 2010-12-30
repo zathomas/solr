@@ -6,6 +6,7 @@ import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.solr.common.SolrInputDocument;
 import org.osgi.service.event.Event;
+import org.sakaiproject.nakamura.api.solr.RepositorySession;
 import org.sakaiproject.nakamura.api.solr.ResourceIndexingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,20 +30,21 @@ public class FileResourceTypeHandler extends DefaultResourceTypeHandler {
 
   @Activate
   public void activate(Map<String, Object> properties) {
-    resourceIndexingService.addHandler("nt:file", this);
+    resourceIndexingService.addHandler("nt:file", this, Session.class);
   }
 
   @Deactivate
   public void deactivate(Map<String, Object> properties) {
-    resourceIndexingService.removeHander("nt:file", this);
+    resourceIndexingService.removeHander("nt:file", this, Session.class);
   }
 
-  public Collection<SolrInputDocument> getDocuments(Session session, Event event) {
-    Collection<SolrInputDocument> docs = super.getDocuments(session, event);
+  public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession, Event event) {
+    Collection<SolrInputDocument> docs = super.getDocuments(repositorySession, event);
     for (SolrInputDocument d : docs) {
       String id = (String) d.getFieldValue("id");
       LOGGER.debug("Adding File Information to  {} ", id);
       try {
+        Session session = repositorySession.adaptTo(Session.class);
         Node n = session.getNode(id);
         if (n.hasNode(Node.JCR_CONTENT)) {
           Node content = n.getNode(Node.JCR_CONTENT);
@@ -72,8 +74,8 @@ public class FileResourceTypeHandler extends DefaultResourceTypeHandler {
     return docs;
   }
 
-  public Collection<String> getDeleteQueries(Session session, Event event) {
-    return super.getDeleteQueries(session, event);
+  public Collection<String> getDeleteQueries(RepositorySession repositorySession, Event event) {
+    return super.getDeleteQueries(repositorySession, event);
   }
 
   public void setResourceIndexingService(ResourceIndexingService resourceIndexingService) {

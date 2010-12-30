@@ -20,7 +20,6 @@ import org.osgi.service.component.ComponentContext;
 import org.sakaiproject.nakamura.api.solr.SolrServerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.spi.LocationAwareLogger;
 import org.xml.sax.SAXException;
 
 import java.io.File;

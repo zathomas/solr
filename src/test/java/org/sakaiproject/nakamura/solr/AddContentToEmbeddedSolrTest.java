@@ -13,6 +13,10 @@ import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.event.Event;
+import org.sakaiproject.nakamura.api.lite.ClientPoolException;
+import org.sakaiproject.nakamura.api.lite.StorageClientException;
+import org.sakaiproject.nakamura.api.lite.accesscontrol.AccessDeniedException;
+import org.sakaiproject.nakamura.lite.BaseMemoryRepository;
 import org.sakaiproject.nakamura.solr.handlers.FileResourceTypeHandler;
 import org.xml.sax.SAXException;
 
@@ -57,13 +61,14 @@ public class AddContentToEmbeddedSolrTest {
 
   private EmbeddedSolrClient embeddedSolrClient;
   private ContentEventListener contentEventListener;
+  private BaseMemoryRepository sparseRepository;
 
   public AddContentToEmbeddedSolrTest() {
     MockitoAnnotations.initMocks(this);
   }
 
   public void startEmbeddedSolr() throws IOException, ParserConfigurationException,
-      SAXException {
+      SAXException, ClientPoolException, StorageClientException, AccessDeniedException, ClassNotFoundException {
     embeddedSolrClient = new EmbeddedSolrClient();
     Mockito.when(componentContext.getBundleContext()).thenReturn(bundleContext);
     FileUtils.deleteQuietly(new File("target/slingtest"));
@@ -78,16 +83,19 @@ public class AddContentToEmbeddedSolrTest {
             "org.apache.sling.commons.log.LogManager.factory.config", null)).thenReturn(
         configuration);
     embeddedSolrClient.activate(componentContext);
+    sparseRepository = new BaseMemoryRepository();
   }
 
   public void stopEmbeddedSolr() throws IOException, ParserConfigurationException,
       SAXException {
+    sparseRepository.close();
     embeddedSolrClient.deactivate(componentContext);
   }
 
-  public void startContentListener() throws RepositoryException, IOException {
+  public void startContentListener() throws RepositoryException, IOException, ClientPoolException, StorageClientException, AccessDeniedException {
     contentEventListener = new ContentEventListener();
     contentEventListener.repository = repository;
+    contentEventListener.sparseRepository = sparseRepository.getRepository();
     contentEventListener.solrServerService = embeddedSolrClient;
     Map<String, Object> properties = new HashMap<String, Object>();
     contentEventListener.activate(properties);
@@ -222,7 +230,7 @@ public class AddContentToEmbeddedSolrTest {
 
   @Test
   public void addContentTest() throws IOException, ParserConfigurationException,
-      SAXException, RepositoryException, InterruptedException {
+      SAXException, RepositoryException, InterruptedException, ClientPoolException, StorageClientException, AccessDeniedException, ClassNotFoundException {
     Mockito.when(repository.loginAdministrative(null)).thenReturn(session);
     startEmbeddedSolr();
     startContentListener();

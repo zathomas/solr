@@ -12,9 +12,15 @@ import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.solr.common.SolrInputDocument;
 import org.osgi.service.event.Event;
-import org.sakaiproject.nakamura.api.solr.Indexer;
+import org.sakaiproject.nakamura.api.lite.StorageClientException;
+import org.sakaiproject.nakamura.api.lite.StorageClientUtils;
+import org.sakaiproject.nakamura.api.lite.accesscontrol.AccessDeniedException;
+import org.sakaiproject.nakamura.api.lite.content.Content;
+import org.sakaiproject.nakamura.api.lite.content.ContentManager;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
+import org.sakaiproject.nakamura.api.solr.RepositorySession;
 import org.sakaiproject.nakamura.api.solr.ResourceIndexingService;
+import org.sakaiproject.nakamura.api.solr.TopicIndexer;
 import org.sakaiproject.nakamura.solr.handlers.DefaultResourceTypeHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,8 +51,9 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
       .getLogger(ResourceIndexingServiceImpl.class);
   // these are the names of system properites.
   private static final Set<String> SYSTEM_PROPERTIES = ImmutableSet.of("id", "readers");
+  
   @Reference
-  protected Indexer contentIndexer;
+  protected TopicIndexer contentIndexer;
   private String[] topics;
 
   private Map<String, IndexingHandler> indexers = Maps.newConcurrentHashMap();
@@ -68,14 +75,15 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
     }
   }
 
-  public Collection<SolrInputDocument> getDocuments(Session session, Event event) {
+  public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession,
+      Event event) {
     String topic = event.getTopic();
     if (topic.endsWith(CHANGED_TOPIC) || topic.endsWith(CREATED_TOPIC)) {
       String path = (String) event.getProperty("path");
       LOGGER.debug("Update action at path:{}  require on {} ", path, event);
       if (path != null) {
-        Collection<SolrInputDocument> docs = getHander(session, path).getDocuments(
-            session, event);
+        Collection<SolrInputDocument> docs = getHander(repositorySession, path)
+            .getDocuments(repositorySession, event);
         List<SolrInputDocument> outputDocs = Lists.newArrayList();
         for (SolrInputDocument doc : docs) {
           for (String name : doc.getFieldNames()) {
@@ -93,24 +101,51 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
     return ImmutableList.of();
   }
 
-  private IndexingHandler getHander(Session session, String path) {
+  private IndexingHandler getHander(RepositorySession repositorySession, String path) {
+    Session session = repositorySession.adaptTo(Session.class);
+    org.sakaiproject.nakamura.api.lite.Session sparseSession = repositorySession
+        .adaptTo(org.sakaiproject.nakamura.api.lite.Session.class);
     while (path != null && !"/".equals(path)) {
       try {
-        Node n = session.getNode(path);
-        LOGGER.debug("Checking for Node at {} found {} ", path, n);
-        if (n != null) {
-          String resourceType = n.getPrimaryNodeType().getName();
-          if (n.hasProperty("sling:resourceType")) {
-            resourceType = n.getProperty("sling:resourceType").getString();
-          }
-          IndexingHandler handler = indexers.get(resourceType);
-          LOGGER.debug("Handler of type {} found {} from {} ", new Object[] {
-              resourceType, handler, indexers });
-          if (handler != null) {
-            return handler;
+        if (session != null) {
+          Node n = session.getNode(path);
+          LOGGER.debug("Checking for Node at {} found {} ", path, n);
+          if (n != null) {
+            String resourceType = session.getClass().getName()+":"+n.getPrimaryNodeType().getName();
+            if (n.hasProperty("sling:resourceType")) {
+              resourceType = session.getClass().getName()+":"+n.getProperty("sling:resourceType").getString();
+            }
+            IndexingHandler handler = indexers.get(resourceType);
+            LOGGER.debug("Handler of type {} found {} from {} ", new Object[] {
+                resourceType, handler, indexers });
+            if (handler != null) {
+              return handler;
+            }
           }
         }
       } catch (RepositoryException e) {
+        LOGGER.debug(e.getMessage(), e);
+      }
+      try {
+        if (sparseSession != null) {
+          ContentManager contentManager = sparseSession.getContentManager();
+          Content c = contentManager.get(path);
+          if (c != null) {
+            if (c.hasProperty("sling:resourceType")) {
+              String resourceType = sparseSession.getClass().getName()+":"+StorageClientUtils.toString(c
+                  .getProperty("sling:resourceType"));
+              IndexingHandler handler = indexers.get(resourceType);
+              LOGGER.debug("Handler of type {} found {} from {} ", new Object[] { 
+                  resourceType, handler, indexers });
+              if (handler != null) {
+                return handler;
+              }
+            }
+          }
+        }
+      } catch (StorageClientException e) {
+        LOGGER.debug(e.getMessage(), e);
+      } catch (AccessDeniedException e) {
         LOGGER.debug(e.getMessage(), e);
       }
       path = Utils.getParentPath(path);
@@ -118,12 +153,12 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
     return defaultHandler;
   }
 
-  public Collection<String> getDeleteQueries(Session session, Event event) {
+  public Collection<String> getDeleteQueries(RepositorySession repositorySession, Event event) {
     String topic = event.getTopic();
     if (topic.endsWith(REMOVE_TOPIC) || topic.endsWith(CHANGED_TOPIC)) {
       String path = (String) event.getProperty("path");
       if (path != null) {
-        return getHander(session, path).getDeleteQueries(session, event);
+        return getHander(repositorySession, path).getDeleteQueries(repositorySession, event);
       }
     } else {
       LOGGER.debug("No delete action require on {} ", event);
@@ -131,15 +166,16 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
     return ImmutableList.of();
   }
 
-  public void addHandler(String key, IndexingHandler handler) {
-    LOGGER.debug("Added New Indexer as {} at {} ", key, handler);
-    indexers.put(key, handler);
+  public void addHandler(String key, IndexingHandler handler, Class<?> sessionClass) {
+    LOGGER.debug("Added New Indexer as {} at {} ", sessionClass.getName()+":"+key, handler);
+    indexers.put(sessionClass.getName()+":"+key, handler);
   }
 
-  public void removeHander(String key, IndexingHandler handler) {
-    if (handler.equals(indexers.get(key))) {
-      indexers.remove(key);
+  public void removeHander(String key, IndexingHandler handler, Class<?> sessionClass) {
+    if (handler.equals(indexers.get(sessionClass.getName()+":"+key))) {
+      indexers.remove(sessionClass.getName()+":"+key);
     }
   }
+
 
 }

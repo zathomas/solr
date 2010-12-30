@@ -11,6 +11,7 @@ import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.schema.DateField;
 import org.osgi.service.event.Event;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
+import org.sakaiproject.nakamura.api.solr.RepositorySession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +47,7 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
   private static final Map<String, String> INDEX_FIELD_MAP = ImmutableMap.of("jcr:data",
       "content");
 
-  public Collection<SolrInputDocument> getDocuments(Session session, Event event) {
+  public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession, Event event) {
     LOGGER.debug("GetDocuments for {} ", event);
     String path = (String) event.getProperty("path");
     if ( ignorePath(path)) {
@@ -55,6 +56,7 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
     List<SolrInputDocument> documents = Lists.newArrayList();
     if (path != null) {
       try {
+        Session session = repositorySession.adaptTo(Session.class);
         Node n = session.getNode(path);
         if (n != null) {
           String[] principals = getReadingPrincipals(n);
@@ -97,7 +99,7 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
     return documents;
   }
 
-  public Collection<String> getDeleteQueries(Session session, Event event) {
+  public Collection<String> getDeleteQueries(RepositorySession repositorySession, Event event) {
     LOGGER.debug("GetDelete for {} ", event);
     String path = (String) event.getProperty("path");
     boolean ignore = ignorePath(path);
