@@ -50,7 +50,7 @@ import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 
 @Component(immediate = true, metatype = true)
-@Services(value = { @Service(value = EventHandler.class), @Service(value = Indexer.class) })
+@Services(value = { @Service(value = EventHandler.class), @Service(value = TopicIndexer.class) })
 public class ContentEventListener implements EventHandler, TopicIndexer, Runnable {
 
   @Property(value = "org/apache/sling/api/resource/Resource/*", propertyPrivate = true)
