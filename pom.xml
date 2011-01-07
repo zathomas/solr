@@ -27,7 +27,9 @@
           <instructions>
             <Bundle-Category>sakai-nakamura</Bundle-Category>
             <Export-Package>
-              org.sakaiproject.nakamura.api.solr.*
+              org.sakaiproject.nakamura.api.solr.*,
+              org.apache.solr.common,
+              org.apache.solr.client.solrj
 			</Export-Package>
 			<Import-Package>
 			!org.apache.noggit,

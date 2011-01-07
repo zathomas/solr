@@ -148,15 +148,17 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   @Deactivate
   protected void deactivate(Map<String, Object> properties) throws IOException {
-    if (session != null) {
-      session.logout();
-    }
     if (sparseSession != null) {
       try {
         sparseSession.logout();
+        sparseSession = null;
       } catch (ClientPoolException e) {
         LOGGER.warn(e.getMessage(), e);
       }
+    }
+    if (session != null) {
+      session.logout();
+      session = null;
     }
     closeWriter();
     running = false;
