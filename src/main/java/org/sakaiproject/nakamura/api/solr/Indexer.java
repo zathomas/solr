@@ -17,19 +17,8 @@ public interface Indexer {
    *          type.
    * @param handler
    *          the handler to be registered.
-   * @param sessionClass
-   *          The session type required for this registration. The Indexer will inspect
-   *          the event and determine the Repository from which it came. It will then
-   *          select only IndexHandlers that are capable of Handling that type of
-   *          repository based on the Session class for that repository. So if the Event
-   *          identifies a JCR Node, then only IndexHandlers registered with
-   *          javax.jcr.Session will be selected. Similarly if the Event identifies a
-   *          Sparse Content item then on Index Handlers registered against Sparse
-   *          Sessions will be selected. If the IndexHandler is capable to handling more
-   *          than one type of Session, then it should be registered with each session
-   *          type it can handle.
    */
-  void addHandler(String key, IndexingHandler handler, Class<?> sessionClass);
+  void addHandler(String key, IndexingHandler handler);
 
   /**
    * Remove the handler registration, if that registration exists.
@@ -38,9 +27,7 @@ public interface Indexer {
    *          the key
    * @param handler
    *          the handler
-   * @param sessionClass
-   *          the session class that the registration was made against.
    */
-  void removeHander(String key, IndexingHandler handler, Class<?> sessionClass);
+  void removeHander(String key, IndexingHandler handler);
 
 }

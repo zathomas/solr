@@ -25,17 +25,17 @@ public class FileResourceTypeHandler extends DefaultResourceTypeHandler {
 
   private static final Logger LOGGER = LoggerFactory
       .getLogger(FileResourceTypeHandler.class);
-  @Reference
+  @Reference(target="(type=jcr)")
   protected ResourceIndexingService resourceIndexingService;
 
   @Activate
   public void activate(Map<String, Object> properties) {
-    resourceIndexingService.addHandler("nt:file", this, Session.class);
+    resourceIndexingService.addHandler("nt:file", this);
   }
 
   @Deactivate
   public void deactivate(Map<String, Object> properties) {
-    resourceIndexingService.removeHander("nt:file", this, Session.class);
+    resourceIndexingService.removeHander("nt:file", this);
   }
 
   public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession, Event event) {
