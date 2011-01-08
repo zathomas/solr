@@ -58,6 +58,15 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
   private IndexingHandler defaultHandler;
   @SuppressWarnings("unchecked")
   private Map<String, String> ignoreCache = new LRUMap(500);
+  private static final String[] BLACK_LISTED = {
+      "/dev/",
+      "/devwidgets/",
+      "/jsdoc/",
+      "/dev/",
+      "/var/",
+      "/tests/",
+      "/apps/"
+  };
 
   @Activate
   public void activate(Map<String, Object> properties) {
@@ -81,7 +90,8 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
     if (topic.endsWith(CHANGED_TOPIC) || topic.endsWith(ADDED_TOPIC)) {
       String path = (String) event.getProperty("path");
       LOGGER.debug("Update action at path:{}  require on {} ", path, event);
-      if (path != null) {
+      
+      if (!ignore(path)) {
         Collection<SolrInputDocument> docs = getHander(repositorySession, path)
             .getDocuments(repositorySession, event);
         List<SolrInputDocument> outputDocs = Lists.newArrayList();
@@ -140,7 +150,7 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
     String topic = event.getTopic();
     if (topic.endsWith(REMOVE_TOPIC) || topic.endsWith(CHANGED_TOPIC)) {
       String path = (String) event.getProperty("path");
-      if (path != null) {
+      if (!ignore(path)) {
         return getHander(repositorySession, path).getDeleteQueries(repositorySession,
             event);
       }
@@ -148,6 +158,18 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
       LOGGER.debug("No delete action require on {} ", event);
     }
     return ImmutableList.of();
+  }
+
+  private boolean ignore(String path) {
+    if ( path == null ) {
+      return true;
+    }
+    for ( String blackList : BLACK_LISTED ) {
+      if ( path.startsWith(blackList)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public void addHandler(String key, IndexingHandler handler) {

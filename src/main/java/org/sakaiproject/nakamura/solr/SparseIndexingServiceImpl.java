@@ -54,6 +54,15 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
   private IndexingHandler defaultHandler;
   @SuppressWarnings("unchecked")
   private Map<String, String> ignoreCache = new LRUMap(500);
+  private static final String[] BLACK_LISTED = {
+      "/dev/",
+      "/devwidgets/",
+      "/jsdoc/",
+      "/dev/",
+      "/var/",
+      "/tests/",
+      "/apps/"
+  };
 
   @Activate
   public void activate(Map<String, Object> properties) {
@@ -77,7 +86,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     if (topic.endsWith(StoreListener.UPDATED_TOPIC) || topic.endsWith(StoreListener.ADDED_TOPIC)) {
       String path = (String) event.getProperty("path");
       LOGGER.debug("Update action at path:{}  require on {} ", path, event);
-      if (path != null) {
+      if (!ignore(path)) {
         Collection<SolrInputDocument> docs = getHander(repositorySession, path)
             .getDocuments(repositorySession, event);
         List<SolrInputDocument> outputDocs = Lists.newArrayList();
@@ -138,7 +147,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     String topic = event.getTopic();
     if (topic.endsWith(StoreListener.DELETE_TOPIC) || topic.endsWith(StoreListener.UPDATED_TOPIC)) {
       String path = (String) event.getProperty("path");
-      if (path != null) {
+      if (!ignore(path)) {
         return getHander(repositorySession, path).getDeleteQueries(repositorySession,
             event);
       }
@@ -158,6 +167,18 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     if (handler.equals(indexers.get(key))) {
       indexers.remove(key);
     }
+  }
+
+  private boolean ignore(String path) {
+    if ( path == null ) {
+      return true;
+    }
+    for ( String blackList : BLACK_LISTED ) {
+      if ( path.startsWith(blackList)) {
+        return true;
+      }
+    }
+    return false;
   }
 
 }
