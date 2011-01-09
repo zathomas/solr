@@ -85,8 +85,8 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     String topic = event.getTopic();
     if (topic.endsWith(StoreListener.UPDATED_TOPIC) || topic.endsWith(StoreListener.ADDED_TOPIC)) {
       String path = (String) event.getProperty("path");
-      LOGGER.debug("Update action at path:{}  require on {} ", path, event);
       if (!ignore(path)) {
+        LOGGER.info("Update action at path:{}  require on {} ", path, event);
         Collection<SolrInputDocument> docs = getHander(repositorySession, path)
             .getDocuments(repositorySession, event);
         List<SolrInputDocument> outputDocs = Lists.newArrayList();
@@ -99,9 +99,11 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
           }
         }
         return outputDocs;
+      } else {
+        LOGGER.info("Ignored action at path:{}  require on {} ", path, event);
       }
     } else {
-      LOGGER.debug("No update action require on {} ", event);
+      LOGGER.info("No update action require on {} ", event);
     }
     return ImmutableList.of();
   }
@@ -110,7 +112,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     org.sakaiproject.nakamura.api.lite.Session sparseSession = repositorySession
         .adaptTo(org.sakaiproject.nakamura.api.lite.Session.class);
 
-    while (path != null && !"/".equals(path)) {
+    while (path != null) {
       if (!ignoreCache.containsKey(path)) {
         try {
           if (sparseSession != null) {
@@ -126,8 +128,11 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
                       resourceType, handler, path, indexers });
                   return handler;
                 } else {
+                  LOGGER.info("Ignored {} no handler for {} ", path, resourceType);
                   ignoreCache.put(path, path);
                 }
+              } else {
+                LOGGER.info("Ignored {} no resource type ",path);
               }
             }
           }
@@ -136,6 +141,9 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
         } catch (AccessDeniedException e) {
           LOGGER.debug(e.getMessage(), e);
         }
+      }
+      if ( StorageClientUtils.isRoot(path)) {
+        break;
       }
       path = Utils.getParentPath(path);
     }

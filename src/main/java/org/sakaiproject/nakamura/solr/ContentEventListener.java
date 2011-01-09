@@ -52,7 +52,7 @@ import javax.jcr.Session;
 @Services(value = { @Service(value = EventHandler.class), @Service(value = TopicIndexer.class) })
 public class ContentEventListener implements EventHandler, TopicIndexer, Runnable {
 
-  @Property(value = "org/apache/sling/api/resource/Resource/*", propertyPrivate = true)
+  @Property(value = {"org/sakaiproject/nakamura/lite/*", "org/apache/sling/api/resource/Resource/*"}, propertyPrivate = true)
   static final String TOPICS = EventConstants.EVENT_TOPIC;
 
   private static final Logger LOGGER = LoggerFactory
@@ -188,7 +188,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
       try {
         saveEvent(event);
       } catch (IOException e) {
-        LOGGER.info(e.getMessage(), e);
+        LOGGER.warn(e.getMessage(), e);
       }
     }
   }
@@ -239,7 +239,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
         Event event = readEvent();
         String topic = event.getTopic();
         IndexingHandler contentIndexHandler = handlers.get(topic);
-        LOGGER.debug("Got Handler {} for event {}", contentIndexHandler, event);
+        LOGGER.debug("Got Handler {} for event {} {}", new Object[]{contentIndexHandler, event, event.getProperty("path")});
         if (contentIndexHandler != null) {
           SolrServer service = solrServerService.getServer();
           try {

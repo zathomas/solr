@@ -128,10 +128,11 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
               }
               IndexingHandler handler = indexers.get(resourceType);
               if (handler != null) {
-                LOGGER.info("Handler of type {} found {} for {} from {} ", new Object[] {
+                LOGGER.debug("Handler of type {} found {} for {} from {} ", new Object[] {
                     resourceType, handler, path, indexers });
                 return handler;
               } else {
+                LOGGER.debug("Ignoring {} type {} no handler ", path, resourceType);
                 ignoreCache.put(path, path);
               }
             }
