@@ -59,6 +59,9 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   @Property(intValue = 0)
   static final String BATCHED_INDEX_SIZE = "batched-index-size";
+  
+  @Property(longValue= 15000L)
+  static final String BATCHED_INDEX_LIFETIME = "batched-index-flush-interval";
 
   @Property(value = { "org/sakaiproject/nakamura/lite/*",
       "org/apache/sling/api/resource/Resource/*" }, propertyPrivate = true)
@@ -70,6 +73,9 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   private static final String END = "--end--";
 
   private static final Integer DEFAULT_BATCHED_INDEX_SIZE = 100;
+
+
+  private static final Long DEFAULT_BATCHED_INDEX_LIFETIME = 15000L;
 
   @Reference
   protected SolrServerService solrServerService;
@@ -120,6 +126,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   private int savedLineNo;
 
+  private long queueLifetime;
+
 
   @Activate
   protected void activate(Map<String, Object> properties) throws RepositoryException,
@@ -128,6 +136,9 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     sparseSession = sparseRepository.loginAdministrative();
     batchedIndexSize = StorageClientUtils.getSetting(properties.get(BATCHED_INDEX_SIZE),
         DEFAULT_BATCHED_INDEX_SIZE);
+
+    queueLifetime = StorageClientUtils.getSetting(properties.get(BATCHED_INDEX_LIFETIME),
+        DEFAULT_BATCHED_INDEX_LIFETIME);
 
     repositorySession = new RepositorySession() {
 
@@ -271,6 +282,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           LOGGER.warn("Unreadble Event at {} {} ",currentInFile, lineNo);
         }
         Map<String, Event> events = Maps.newLinkedHashMap();
+        long queueTTL = System.currentTimeMillis()+queueLifetime;
         while (loadEvent != null) {
           String topic = loadEvent.getTopic();
           String path = (String) loadEvent.getProperty("path");
@@ -284,14 +296,17 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
               events.put(path, loadEvent);
             }
           }
-          if (events.size() >= batchedIndexSize) {
+          if (events.size() >= batchedIndexSize || queueTTL > System.currentTimeMillis() ) {
             break;
           }
+          
           loadEvent = null;
-          try {
-            loadEvent = readEvent(false);
-          } catch ( Throwable t) {
-            LOGGER.warn("Unreadble Event at {} {} ",currentInFile, lineNo);            
+          while ( loadEvent == null ) {
+            try {
+              loadEvent = readEvent(true);
+            } catch ( Throwable t) {
+              LOGGER.warn("Unreadble Event at {} {} ",currentInFile, lineNo);            
+            }
           }
         }
 
