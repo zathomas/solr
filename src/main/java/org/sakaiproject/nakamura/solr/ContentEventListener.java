@@ -57,7 +57,7 @@ import javax.jcr.Session;
     @Service(value = TopicIndexer.class) })
 public class ContentEventListener implements EventHandler, TopicIndexer, Runnable {
 
-  @Property(intValue = 100)
+  @Property(intValue = 200)
   static final String BATCHED_INDEX_SIZE = "batched-index-size";
   
 
@@ -333,16 +333,17 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           }
           if (needsCommit) {
             LOGGER.info("Processed {} events in a batch, max {} ", events.size(), batchedIndexSize);
-            service.commit();
+            service.commit(false,false);
           }
           commit();
         } catch (SolrServerException e) {
+          LOGGER.warn(" Batch Operation completed with Errors, the index may have lost data, please FIX ASAP. "+e.getMessage(), e);
           try {
             service.rollback();
           } catch (Exception e1) {
             LOGGER.warn(e.getMessage(), e1);
           }
-          rollback();
+          commit();
         } catch (IOException e) {
           LOGGER.warn(e.getMessage(), e);
           rollback();
