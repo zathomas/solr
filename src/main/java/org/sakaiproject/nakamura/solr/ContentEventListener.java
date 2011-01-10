@@ -267,7 +267,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
         begin();
         Event loadEvent = null;
         try { 
-          loadEvent = readEvent(true);
+          loadEvent = readEvent(5000L);
         } catch ( Throwable t) {
           LOGGER.warn("Unreadble Event at {} {} ",currentInFile, lineNo);
         }
@@ -291,7 +291,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           
           loadEvent = null;
           try {
-            loadEvent = readEvent(true);
+            loadEvent = readEvent(5000L);
           } catch ( Throwable t) {
             LOGGER.warn("Unreadble Event at {} {} ",currentInFile, lineNo);            
           }
@@ -369,7 +369,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   private void perEventRun() {
     while (running) {
       try {
-        Event event = readEvent(true);
+        Event event = readEvent(5000L);
         String topic = event.getTopic();
         IndexingHandler contentIndexHandler = handlers.get(topic);
         LOGGER.debug("Got Handler {} for event {} {}", new Object[] {
@@ -430,8 +430,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   }
 
-  private Event readEvent(boolean blocking) throws IOException {
-    String line = nextEvent(blocking);
+  private Event readEvent(long timeout) throws IOException {
+    String line = nextEvent(timeout);
     if (line != null) {
       String[] parts = StringUtils.split(line, ',');
       if ( parts.length > 0 ) {
@@ -446,14 +446,15 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     return null;
   }
 
-  private String nextEvent(boolean blocking) throws IOException {
+  private String nextEvent(long timeout) throws IOException {
     String line = null;
     int possibleEnd = 0;
-    if (checkReaderOpen(blocking)) {
+    long loadedAt = 0;
+    if (checkReaderOpen(timeout)) {
       while (line == null || END.equals(line)) {
         if (END.equals(line)) {
           LOGGER.debug("At End of file {}", currentInFile);
-          if (!nextReader(blocking)) {
+          if (!nextReader(timeout)) {
             return null;
           }
         }
@@ -467,30 +468,54 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
             LOGGER.info("Event Redo Log has processed {} events", nread);
           }
         } else {
-          // if we get null from a buffered reader that means end of file
-          if (blocking) {
-            if (possibleEnd == 1) {
+          // if we get null from a buffered reader that means end of file, but there was no end statement
+          // so we need to check if this really is the end of file
+          if (timeout > 0) {
+            if (possibleEnd == 0) {
               // even though the writer wrote something, we still couldnt read
-              waitForWriter();
+              waitForWriter(timeout);
+              possibleEnd = 1;
+            } else if (possibleEnd == 1) {
+              // even though the writer wrote something, we still couldnt read
+              waitForWriter(timeout);
               possibleEnd = 2;
             } else if (possibleEnd == 2) {
-              // try reopen the file, incase the Buffered reader is stale.
-              LOGGER.info("Reopening file, currently {}", currentInFile);
-              loadPosition(currentInFile, lineNo);
-              possibleEnd = 3;
-            } else if (possibleEnd == 3) {
               //we waited, we reloaded and its still not giving more, all I can assume is the file got closed without a new one, so go for the next reader
-              LOGGER.info("Searching for next file, currently {}", currentInFile);
-              nextReader(blocking);
-              possibleEnd = 4;
+              LOGGER.debug("Searching for next file, currently {}", currentInFile);
+              // one of 2 things can happen here.
+              // the file gets appended to or a new file appears.
+              List<File> files = Lists.newArrayList(logDirectory.listFiles());
+              if (deleteQueue != null ) {
+                files.removeAll(deleteQueue);
+              }
+              File nextFile = null;
+              
+              for (File f : files ) {
+                if ( f.lastModified() > loadedAt ) {
+                    if ( nextFile == null ) {
+                      nextFile = null;
+                    } else if ( f.lastModified() < nextFile.lastModified() ) {
+                      nextFile = f;
+                    }
+                }
+              }
+              if ( nextFile == null ) {
+                return null;
+              } else if ( nextFile.equals(currentInFile) ) {
+                waitForWriter(timeout);
+                possibleEnd = 4; // try once more 
+              } else {
+                // a new file, try and open that
+                nextReader(timeout);
+                possibleEnd = 4;
+              }
             } else if ( possibleEnd == 4) {
               LOGGER.warn("Unable to process redo log, resetting reader");
               // total failure to read anything,
               return null;
             } else {
-              waitForWriter();
-              // the write wrote something
-              possibleEnd = 1;
+              waitForWriter(timeout);
+              return null;
             }
           } else {
             return null;
@@ -576,7 +601,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     }
  }
 
-  private boolean checkReaderOpen(boolean blocking) throws IOException {
+  private boolean checkReaderOpen(long timeout) throws IOException {
     while (currentInFile == null) {
       List<File> files = Lists.newArrayList(logDirectory.listFiles());
       Collections.sort(files, new Comparator<File>() {
@@ -598,8 +623,9 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           eventReader = null;
         }
       } else {
-        if (blocking) {
-          waitForWriter();
+        if (timeout > 0) {
+          waitForWriter(timeout);
+          timeout = 0;
         } else {
           return false;
         }
@@ -613,7 +639,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     return true;
   }
 
-  private boolean nextReader(boolean blocking) throws IOException {
+  private boolean nextReader(long timeout) throws IOException {
     if (eventReader != null) {
       LOGGER.debug("Closing Reader File {} ", currentInFile);
       eventReader.close();
@@ -631,25 +657,27 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
         currentInFile = null;
       }
     }
-    return checkReaderOpen(blocking);
+    return checkReaderOpen(timeout);
   }
 
-  private void waitForWriter() throws IOException {
+  private void waitForWriter(long timeout) throws IOException {
     if (running) {
       // just incase we have to wait for a while for the lock, get the last modified now,
       // so we can see if its modified since we started waiting.
-      synchronized (waitingForFileLock) {
-        try {
-          LOGGER.debug("Waiting for more data read:{} written:{} ", nread, nwrite);
-          if (nread > nwrite) {
-            // reset counters if were catching up
-            nread = nwrite;
-            // +1 because an event was written which makes nwrite nread+1 when there are none left
-          } else if ( nread+1 < nwrite ) {
-            LOGGER.debug("Possible event loss, waiting to read when there are more events written read:{} written:{}",nread,nwrite);
+      if ( timeout > 0 ) {
+        synchronized (waitingForFileLock) {
+          try {
+            LOGGER.debug("Waiting for more data read:{} written:{} ", nread, nwrite);
+            if (nread > nwrite) {
+              // reset counters if were catching up
+              nread = nwrite;
+              // +1 because an event was written which makes nwrite nread+1 when there are none left
+            } else if ( nread+1 < nwrite ) {
+              LOGGER.debug("Possible event loss, waiting to read when there are more events written read:{} written:{}",nread,nwrite);
+            }
+            waitingForFileLock.wait(timeout);
+          } catch (InterruptedException e) {
           }
-          waitingForFileLock.wait(5000);
-        } catch (InterruptedException e) {
         }
       }
     }
