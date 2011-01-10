@@ -191,7 +191,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     if (eventWriter != null) {
       LOGGER.debug("Writer closing {} ", currentFile.getName());
       nwrite++;
-      eventWriter.append(END).append("\n");
+      eventWriter.append(END);
       eventWriter.flush();
       eventWriter.close();
       eventWriter = null;
@@ -264,7 +264,12 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     while (running) {
       try {
         begin();
-        Event loadEvent = readEvent(true);
+        Event loadEvent = null;
+        try { 
+          loadEvent = readEvent(true);
+        } catch ( Throwable t) {
+          LOGGER.warn("Unreadble Event at {} {} ",currentInFile, lineNo);
+        }
         Map<String, Event> events = Maps.newLinkedHashMap();
         while (loadEvent != null) {
           String topic = loadEvent.getTopic();
@@ -282,7 +287,12 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           if (events.size() >= batchedIndexSize) {
             break;
           }
-          loadEvent = readEvent(false);
+          loadEvent = null;
+          try {
+            loadEvent = readEvent(false);
+          } catch ( Throwable t) {
+            LOGGER.warn("Unreadble Event at {} {} ",currentInFile, lineNo);            
+          }
         }
 
         SolrServer service = solrServerService.getServer();
@@ -421,15 +431,16 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     String line = nextEvent(blocking);
     if (line != null) {
       String[] parts = StringUtils.split(line, ',');
-      Dictionary<String, Object> dict = new Hashtable<String, Object>();
-      for (int i = 1; i < parts.length; i += 2) {
-        dict.put(URLDecoder.decode(parts[i], "UTF8"),
-            URLDecoder.decode(parts[i + 1], "UTF8"));
+      if ( parts.length > 0 ) {
+        Dictionary<String, Object> dict = new Hashtable<String, Object>();
+        for (int i = 1; i < parts.length; i += 2) {
+          dict.put(URLDecoder.decode(parts[i], "UTF8"),
+              URLDecoder.decode(parts[i + 1], "UTF8"));
+        }
+        return new Event(URLDecoder.decode(parts[0], "UTF8"), dict);
       }
-      return new Event(URLDecoder.decode(parts[0], "UTF8"), dict);
-    } else {
-      return null;
     }
+    return null;
   }
 
   private String nextEvent(boolean blocking) throws IOException {
