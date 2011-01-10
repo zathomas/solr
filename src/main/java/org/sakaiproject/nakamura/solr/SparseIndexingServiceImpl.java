@@ -86,7 +86,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     if (topic.endsWith(StoreListener.UPDATED_TOPIC) || topic.endsWith(StoreListener.ADDED_TOPIC)) {
       String path = (String) event.getProperty("path");
       if (!ignore(path)) {
-        LOGGER.info("Update action at path:{}  require on {} ", path, event);
+        LOGGER.debug("Update action at path:{}  require on {} ", path, event);
         Collection<SolrInputDocument> docs = getHander(repositorySession, path)
             .getDocuments(repositorySession, event);
         List<SolrInputDocument> outputDocs = Lists.newArrayList();
@@ -124,7 +124,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
                 String resourceType = StorageClientUtils.toString(c.getProperty("sling:resourceType"));
                 IndexingHandler handler = indexers.get(resourceType);
                 if (handler != null) {
-                  LOGGER.info("Handler of type {} found {} for {} from {} ", new Object[] {
+                  LOGGER.debug("Handler of type {} found {} for {} from {} ", new Object[] {
                       resourceType, handler, path, indexers });
                   return handler;
                 } else {

@@ -13,6 +13,7 @@ import org.sakaiproject.nakamura.api.lite.accesscontrol.AccessDeniedException;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
 import org.sakaiproject.nakamura.api.solr.RepositorySession;
 import org.sakaiproject.nakamura.api.solr.SolrServerService;
+import org.sakaiproject.nakamura.lite.BaseMemoryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
@@ -33,26 +34,30 @@ import javax.xml.parsers.ParserConfigurationException;
 public class ContentEventListenerSoak {
 
   private static final Logger LOGGER = LoggerFactory
-      .getLogger(ContentEventListener.class);
+      .getLogger(ContentEventListenerSoak.class);
   @Mock
   private SlingRepository repository;
   @Mock
   private Session session;
+  private BaseMemoryRepository baseMemoryRepository;
   
-  public static void main(String[] argv) throws IOException, ParserConfigurationException, SAXException, RepositoryException, InterruptedException, ClientPoolException, StorageClientException, AccessDeniedException {
+  public static void main(String[] argv) throws IOException, ParserConfigurationException, SAXException, RepositoryException, InterruptedException, ClientPoolException, StorageClientException, AccessDeniedException, ClassNotFoundException {
     ContentEventListenerSoak s = new ContentEventListenerSoak();
     s.testContentEventListener();
   }
 
   public ContentEventListenerSoak() throws IOException, ParserConfigurationException,
-      SAXException {
+      SAXException, ClientPoolException, StorageClientException, AccessDeniedException, ClassNotFoundException {
     MockitoAnnotations.initMocks(this);
+    baseMemoryRepository = new BaseMemoryRepository();
   }
 
   public void testContentEventListener() throws IOException, RepositoryException,
       InterruptedException, ClientPoolException, StorageClientException, AccessDeniedException {
     final ContentEventListener contentEventListener = new ContentEventListener();
+    
     contentEventListener.repository = repository;
+    contentEventListener.sparseRepository = baseMemoryRepository.getRepository();
 
     contentEventListener.solrServerService = new SolrServerService() {
       

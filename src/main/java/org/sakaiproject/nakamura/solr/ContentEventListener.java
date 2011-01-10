@@ -2,6 +2,7 @@ package org.sakaiproject.nakamura.solr;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.felix.scr.annotations.Activate;
@@ -22,6 +23,7 @@ import org.osgi.service.event.EventHandler;
 import org.sakaiproject.nakamura.api.lite.ClientPoolException;
 import org.sakaiproject.nakamura.api.lite.Repository;
 import org.sakaiproject.nakamura.api.lite.StorageClientException;
+import org.sakaiproject.nakamura.api.lite.StorageClientUtils;
 import org.sakaiproject.nakamura.api.lite.accesscontrol.AccessDeniedException;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
 import org.sakaiproject.nakamura.api.solr.RepositorySession;
@@ -44,21 +46,30 @@ import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 
 @Component(immediate = true, metatype = true)
-@Services(value = { @Service(value = EventHandler.class), @Service(value = TopicIndexer.class) })
+@Services(value = { @Service(value = EventHandler.class),
+    @Service(value = TopicIndexer.class) })
 public class ContentEventListener implements EventHandler, TopicIndexer, Runnable {
 
-  @Property(value = {"org/sakaiproject/nakamura/lite/*", "org/apache/sling/api/resource/Resource/*"}, propertyPrivate = true)
+  @Property(intValue = 0)
+  static final String BATCHED_INDEX_SIZE = "batched-index-size";
+
+  @Property(value = { "org/sakaiproject/nakamura/lite/*",
+      "org/apache/sling/api/resource/Resource/*" }, propertyPrivate = true)
   static final String TOPICS = EventConstants.EVENT_TOPIC;
 
   private static final Logger LOGGER = LoggerFactory
       .getLogger(ContentEventListener.class);
 
   private static final String END = "--end--";
+
+  private static final Integer DEFAULT_BATCHED_INDEX_SIZE = 100;
 
   @Reference
   protected SolrServerService solrServerService;
@@ -101,19 +112,31 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   private RepositorySession repositorySession;
 
+  protected int batchedIndexSize;
+
+  private Set<File> deleteQueue;
+
+  private File savedCurrentInFile;
+
+  private int savedLineNo;
+
+
   @Activate
   protected void activate(Map<String, Object> properties) throws RepositoryException,
       IOException, ClientPoolException, StorageClientException, AccessDeniedException {
     session = repository.loginAdministrative(null);
     sparseSession = sparseRepository.loginAdministrative();
+    batchedIndexSize = StorageClientUtils.getSetting(properties.get(BATCHED_INDEX_SIZE),
+        DEFAULT_BATCHED_INDEX_SIZE);
+
     repositorySession = new RepositorySession() {
-      
+
       @SuppressWarnings("unchecked")
       public <T> T adaptTo(Class<T> c) {
-        if ( c.equals(Session.class)) {
+        if (c.equals(Session.class)) {
           return (T) session;
-        } 
-        if ( c.equals(org.sakaiproject.nakamura.api.lite.Session.class)) {
+        }
+        if (c.equals(org.sakaiproject.nakamura.api.lite.Session.class)) {
           return (T) sparseSession;
         }
         return null;
@@ -196,7 +219,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   private void saveEvent(Event event) throws IOException {
     LOGGER.debug("Save Event {} ", event);
     if (currentFile != null && currentFile.length() > 1024 * 1024) {
-      LOGGER.debug("Closed {} ", currentFile.getName());
+      LOGGER.info("Closed Event Redo Log {} ", currentFile);
       nwrite++;
       eventWriter.append(END);
       eventWriter.close();
@@ -208,7 +231,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     }
     if (eventWriter == null) {
       eventWriter = new FileWriter(currentFile);
-      LOGGER.debug("Opened {} ", currentFile.getName());
+      LOGGER.info("Opened Event Redo Log {} ", currentFile);
     }
     String[] properties = event.getPropertyNames();
     String[] op = new String[properties.length * 2 + 1];
@@ -234,18 +257,116 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   }
 
   public void run() {
+    batchedEventRun();
+  }
+
+  private void batchedEventRun() {
     while (running) {
       try {
-        Event event = readEvent();
+        begin();
+        Event loadEvent = readEvent(true);
+        Map<String, Event> events = Maps.newLinkedHashMap();
+        while (loadEvent != null) {
+          String topic = loadEvent.getTopic();
+          String path = (String) loadEvent.getProperty("path");
+          if (path != null) {
+            IndexingHandler contentIndexHandler = handlers.get(topic);
+            if (contentIndexHandler != null) {
+              if (events.containsKey(path)) {
+                // events is a linked hash map this will put it at the end.
+                events.remove(path);
+              }
+              events.put(path, loadEvent);
+            }
+          }
+          if (events.size() >= batchedIndexSize) {
+            break;
+          }
+          loadEvent = readEvent(false);
+        }
+
+        SolrServer service = solrServerService.getServer();
+        try {
+          boolean needsCommit = false;
+          for (Entry<String, Event> ev : events.entrySet()) {
+            Event event = ev.getValue();
+            String topic = event.getTopic();
+            IndexingHandler contentIndexHandler = handlers.get(topic);
+            LOGGER.debug("Got Handler {} for event {} {}", new Object[] {
+                contentIndexHandler, event, event.getProperty("path") });
+            if (contentIndexHandler != null) {
+              for (String deleteQuery : contentIndexHandler.getDeleteQueries(
+                  repositorySession, event)) {
+                if (service != null) {
+                  LOGGER.debug("Added delete Query {} ", deleteQuery);
+                  try {
+                    service.deleteByQuery(deleteQuery);
+                    needsCommit = true;
+                  } catch (SolrServerException e) {
+                    LOGGER.info(" Failed to delete {}  cause :{}", deleteQuery,
+                        e.getMessage());
+                  }
+                }
+              }
+              Collection<SolrInputDocument> docs = contentIndexHandler.getDocuments(
+                  repositorySession, event);
+              if (service != null) {
+                if (docs != null && docs.size() > 0) {
+                  LOGGER.debug("Adding Docs {} ", docs);
+                  service.add(docs);
+                  needsCommit = true;
+                }
+              }
+            }
+          }
+          if (needsCommit) {
+            LOGGER.info("Processed {} events in a batch ", events.size());
+            service.commit();
+          }
+          commit();
+        } catch (SolrServerException e) {
+          try {
+            service.rollback();
+          } catch (Exception e1) {
+            LOGGER.warn(e.getMessage(), e1);
+          }
+          rollback();
+        } catch (IOException e) {
+          LOGGER.warn(e.getMessage(), e);
+          rollback();
+        } catch (SolrException e) {
+          LOGGER.warn(e.getMessage(), e);
+          rollback();
+        }
+      } catch (Throwable e) {
+        if (running) {
+          LOGGER.warn(e.getMessage(), e);
+          try {
+            rollback();
+          } catch (IOException e1) {
+            LOGGER.warn(e1.getMessage(), e1);
+          }
+        } else {
+          LOGGER.debug("Closing Down Indexer Event Queue");
+        }
+      }
+    }
+  }
+
+  private void perEventRun() {
+    while (running) {
+      try {
+        Event event = readEvent(true);
         String topic = event.getTopic();
         IndexingHandler contentIndexHandler = handlers.get(topic);
-        LOGGER.debug("Got Handler {} for event {} {}", new Object[]{contentIndexHandler, event, event.getProperty("path")});
+        LOGGER.debug("Got Handler {} for event {} {}", new Object[] {
+            contentIndexHandler, event, event.getProperty("path") });
         if (contentIndexHandler != null) {
           SolrServer service = solrServerService.getServer();
           try {
             boolean needsCommit = false;
-            for (String deleteQuery : contentIndexHandler
-                .getDeleteQueries(repositorySession, event)) {
+            for (String deleteQuery : contentIndexHandler.getDeleteQueries(
+                repositorySession, event)) {
               if (service != null) {
                 LOGGER.debug("Added delete Query {} ", deleteQuery);
                 try {
@@ -257,7 +378,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
                 }
               }
             }
-            Collection<SolrInputDocument> docs = contentIndexHandler.getDocuments(repositorySession, event);
+            Collection<SolrInputDocument> docs = contentIndexHandler.getDocuments(
+                repositorySession, event);
             if (service != null) {
               if (docs != null && docs.size() > 0) {
                 LOGGER.debug("Adding Docs {} ", docs);
@@ -295,42 +417,119 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   }
 
-  private Event readEvent() throws IOException {
-    String line = nextEvent();
-    String[] parts = StringUtils.split(line, ',');
-    Dictionary<String, Object> dict = new Hashtable<String, Object>();
-    for (int i = 1; i < parts.length; i += 2) {
-      dict.put(URLDecoder.decode(parts[i], "UTF8"),
-          URLDecoder.decode(parts[i + 1], "UTF8"));
+  private Event readEvent(boolean blocking) throws IOException {
+    String line = nextEvent(blocking);
+    if (line != null) {
+      String[] parts = StringUtils.split(line, ',');
+      Dictionary<String, Object> dict = new Hashtable<String, Object>();
+      for (int i = 1; i < parts.length; i += 2) {
+        dict.put(URLDecoder.decode(parts[i], "UTF8"),
+            URLDecoder.decode(parts[i + 1], "UTF8"));
+      }
+      return new Event(URLDecoder.decode(parts[0], "UTF8"), dict);
+    } else {
+      return null;
     }
-    return new Event(URLDecoder.decode(parts[0], "UTF8"), dict);
   }
 
-  private String nextEvent() throws IOException {
-    checkReaderOpen();
+  private String nextEvent(boolean blocking) throws IOException {
     String line = null;
-    while (line == null || END.equals(line)) {
-      if (END.equals(line)) {
-        nextReader();
-      }
-      line = eventReader.readLine();
-      if (line != null) {
-        nread++;
-        lineNo++;
-      } else {
-        waitForWriter();
+    int possibleEnd = 0;
+    if (checkReaderOpen(blocking)) {
+      while (line == null || END.equals(line)) {
+        if (END.equals(line)) {
+          LOGGER.debug("At End of file {}", currentInFile);
+          if (!nextReader(blocking)) {
+            return null;
+          }
+        }
+        line = eventReader.readLine();
+
+        if (line != null) {
+          possibleEnd = 0;
+          nread++;
+          lineNo++;
+          if ((nread % 10000) == 0) {
+            LOGGER.info("Event Redo Log has processed {} events", nread);
+          }
+        } else {
+          // if we get null from a buffered reader that means end of file
+          if (blocking) {
+            if (possibleEnd == 1) {
+              // even though the writer wrote something, we still couldnt read
+              waitForWriter();
+              possibleEnd = 2;
+            } else if (possibleEnd == 2) {
+              // try reopen the file, incase the Buffered reader is stale.
+              LOGGER.info("Reopening file, currently {}", currentInFile);
+              loadPosition(currentInFile, lineNo);
+              possibleEnd = 3;
+            } else if (possibleEnd == 3) {
+              //we waited, we reloaded and its still not giving more, all I can assume is the file got closed without a new one, so go for the next reader
+              LOGGER.info("Searching for next file, currently {}", currentInFile);
+              nextReader(blocking);
+              possibleEnd = 4;
+            } else if ( possibleEnd == 4) {
+              LOGGER.warn("Unable to process redo log, resetting reader");
+              // total failure to read anything,
+              return null;
+            } else {
+              waitForWriter();
+              // the write wrote something
+              possibleEnd = 1;
+            }
+          } else {
+            return null;
+          }
+        }
       }
     }
     return line;
   }
 
+  private void rollback() throws IOException {
+    currentInFile = savedCurrentInFile;
+    lineNo = savedLineNo;
+    savePosition();
+    if (eventReader != null) {
+      eventReader.close();
+      eventReader = null;
+    }
+    loadPosition(); // reopen the event reader to reset its position.
+  }
+
+  private void commit() throws IOException {
+    if (deleteQueue != null) {
+      for (File f : deleteQueue) {
+        LOGGER.info("Deleting Reader File {} ", f);
+        f.delete();
+      }
+      positionFile.delete();
+      deleteQueue.clear();
+      deleteQueue = null;
+    }
+    if (currentInFile != null) {
+      savePosition();
+    }
+  }
+
+  private void begin() {
+    savedCurrentInFile = currentInFile;
+    savedLineNo = lineNo;
+    deleteQueue = Sets.newHashSet();
+  }
+
   private void savePosition() throws IOException {
-    FileWriter position = new FileWriter(positionFile);
-    position.write(URLEncoder.encode(currentInFile.getAbsolutePath(), "UTF8"));
-    position.write(",");
-    position.write(String.valueOf(lineNo));
-    position.write("\n");
-    position.close();
+    if (currentInFile == null) {
+      positionFile.delete();
+    } else {
+      FileWriter position = new FileWriter(positionFile);
+      position.write(URLEncoder.encode(currentInFile.getAbsolutePath(), "UTF8"));
+      position.write(",");
+      position.write(String.valueOf(lineNo));
+      position.write("\n");
+      position.close();
+    }
   }
 
   private void loadPosition() throws IOException {
@@ -341,10 +540,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
         currentInFile = new File(URLDecoder.decode(filePos[0], "UTF8"));
         if (currentInFile.exists()) {
           lineNo = Integer.parseInt(filePos[1]);
-          eventReader = new BufferedReader(new FileReader(currentInFile));
-          for (int i = 0; i < lineNo; i++) {
-            eventReader.readLine();
-          }
+          loadPosition(currentInFile, lineNo);
           return;
         }
       }
@@ -354,7 +550,19 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     lineNo = 0;
   }
 
-  private void checkReaderOpen() throws IOException {
+  private void loadPosition(File file, int line) throws IOException {
+    if (file != null) {
+      if (eventReader != null) {
+        eventReader.close();
+      }
+      eventReader = new BufferedReader(new FileReader(file));
+      for (int i = 0; i < line; i++) {
+        eventReader.readLine();
+      }
+    }
+ }
+
+  private boolean checkReaderOpen(boolean blocking) throws IOException {
     while (currentInFile == null) {
       List<File> files = Lists.newArrayList(logDirectory.listFiles());
       Collections.sort(files, new Comparator<File>() {
@@ -363,63 +571,68 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           return (int) (o1.lastModified() - o2.lastModified());
         }
       });
+      if (deleteQueue != null) {
+        files.removeAll(deleteQueue);
+      }
       if (files.size() > 0) {
-        LOGGER.debug("Reader currently {} MB behind ", files.size());
+        if ( files.size() > 1 ) {
+          LOGGER.info("Reader currently {} MB behind ", files.size()-1);
+        }
         currentInFile = files.get(0);
         if (eventReader != null) {
           eventReader.close();
           eventReader = null;
         }
       } else {
-        LOGGER.debug("No More files ");
-        waitForWriter();
+        if (blocking) {
+          waitForWriter();
+        } else {
+          return false;
+        }
       }
     }
     if (eventReader == null) {
-      LOGGER.debug("Opening New Reader {} ", currentInFile);
+      LOGGER.info("Opening New Reader {} ", currentInFile);
       eventReader = new BufferedReader(new FileReader(currentInFile));
       lineNo = 0;
     }
+    return true;
   }
 
-  private void nextReader() throws IOException {
+  private boolean nextReader(boolean blocking) throws IOException {
     if (eventReader != null) {
       LOGGER.debug("Closing Reader File {} ", currentInFile);
       eventReader.close();
       eventReader = null;
     }
     if (currentInFile != null) {
-      LOGGER.info("Deleting Reader File {} ", currentInFile);
-      currentInFile.delete();
-      positionFile.delete();
-      currentInFile = null;
+      if (deleteQueue != null) {
+        deleteQueue.add(currentInFile);
+        positionFile.delete();
+        currentInFile = null;
+      } else {
+        LOGGER.info("Deleting Reader File {} ", currentInFile);
+        currentInFile.delete();
+        positionFile.delete();
+        currentInFile = null;
+      }
     }
-    checkReaderOpen();
+    return checkReaderOpen(blocking);
   }
 
   private void waitForWriter() throws IOException {
     if (running) {
+      // just incase we have to wait for a while for the lock, get the last modified now,
+      // so we can see if its modified since we started waiting.
       synchronized (waitingForFileLock) {
         try {
           LOGGER.debug("Waiting for more data read:{} written:{} ", nread, nwrite);
           if (nread > nwrite) {
             // reset counters if were catching up
             nread = nwrite;
-          } else if (nread < nwrite) {
-
-            // cehck that the file we are reading from is the newest file
-            long currentFileModified = currentInFile.lastModified();
-            File[] files = logDirectory.listFiles();
-            for (File f : files) {
-              if (f.lastModified() > currentFileModified) {
-                nextReader();
-                return;
-              }
-            }
-            LOGGER
-                .info(
-                    "Event Reader is waiting while there are apparently records left to read, it may have missed some read:{} written:{}",
-                    nread, nwrite);
+            // +1 because an event was written which makes nwrite nread+1 when there are none left
+          } else if ( nread+1 < nwrite ) {
+            LOGGER.debug("Possible event loss, waiting to read when there are more events written read:{} written:{}",nread,nwrite);
           }
           waitingForFileLock.wait(5000);
         } catch (InterruptedException e) {
