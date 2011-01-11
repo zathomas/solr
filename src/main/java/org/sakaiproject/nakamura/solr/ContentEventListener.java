@@ -449,8 +449,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
                 possibleEnd = 4;
               }
             } else if ( possibleEnd == 4) {
-              LOGGER.warn("Unable to process redo log, resetting reader");
-              // total failure to read anything,
+              // no more events, flush and start next loop
               return null;
             } else {
               waitForWriter(timeout);
