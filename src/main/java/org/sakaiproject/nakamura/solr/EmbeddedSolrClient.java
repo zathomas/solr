@@ -58,7 +58,7 @@ public class EmbeddedSolrClient implements SolrServerService {
     BundleContext bundleContext = componentContext.getBundleContext();
     solrHome = Utils.getSolrHome(bundleContext);
     // Note that the following property could be set through JVM level arguments too
-    LOGGER.info(" ============================== Creating Logger for Embedded Solr");
+    LOGGER.debug("Logger for Embedded Solr is in {slinghome}/log/solr.log at level INFO");
     Configuration logConfiguration = getLogConfiguration();
 
     // create a log configuration if none was found. leave alone any found configurations

@@ -58,6 +58,8 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
   private IndexingHandler defaultHandler;
   @SuppressWarnings("unchecked")
   private Map<String, String> ignoreCache = new LRUMap(500);
+  private String lastRoot;
+  private int lastRootN;
   private static final String[] BLACK_LISTED = {
       "/dev/",
       "/devwidgets/",
@@ -114,7 +116,7 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
   private IndexingHandler getHander(RepositorySession repositorySession, String path) {
     Session session = repositorySession.adaptTo(Session.class);
 
-    while (path != null && !"/".equals(path)) {
+    while (!isRoot(path)) {
       if (!ignoreCache.containsKey(path)) {
         try {
           if (session != null) {
@@ -144,6 +146,38 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
       path = Utils.getParentPath(path);
     }
     return defaultHandler;
+  }
+
+  /**
+   * @param path
+   * @return true if the paths is a root, that includes "", "/" "something". Non root paths contain a /
+   */
+  private boolean isRoot(String path) {
+    if ( path == null || "/".equals(path) || path.length() == 0 ) {
+      lastRoot = path;
+      lastRootN = 0;
+      return true;
+    }
+    if ( path.indexOf("/") >= 0 ) {
+      if ( path.equals(lastRoot) ) {
+        lastRootN++;
+      } else {
+        lastRoot = path;
+        lastRootN = 0;
+      }
+      if ( lastRootN > 1000) {
+        // must be an infinite loop here
+        LOGGER.info("Looks like an infinite loop on {}, please fix this method, isRoot() ",lastRoot);
+        lastRoot = path;
+        lastRootN = 0;
+        return true;
+      }
+      return false;
+    }
+    
+    lastRoot = path;
+    lastRootN = 0;
+    return true;
   }
 
   public Collection<String> getDeleteQueries(RepositorySession repositorySession,

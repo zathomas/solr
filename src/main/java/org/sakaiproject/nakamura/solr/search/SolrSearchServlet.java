@@ -60,8 +60,6 @@ import org.sakaiproject.nakamura.api.doc.ServiceDocumentation;
 import org.sakaiproject.nakamura.api.doc.ServiceMethod;
 import org.sakaiproject.nakamura.api.doc.ServiceParameter;
 import org.sakaiproject.nakamura.api.doc.ServiceResponse;
-import org.sakaiproject.nakamura.api.personal.PersonalUtils;
-import org.sakaiproject.nakamura.api.profile.ProfileService;
 import org.sakaiproject.nakamura.api.solr.search.MissingParameterException;
 import org.sakaiproject.nakamura.api.solr.search.Result;
 import org.sakaiproject.nakamura.api.solr.search.SolrSearchBatchResultProcessor;
@@ -70,6 +68,7 @@ import org.sakaiproject.nakamura.api.solr.search.SolrSearchPropertyProvider;
 import org.sakaiproject.nakamura.api.solr.search.SolrSearchResultProcessor;
 import org.sakaiproject.nakamura.api.solr.search.SolrSearchResultSet;
 import org.sakaiproject.nakamura.api.solr.search.SolrSearchUtil;
+import org.sakaiproject.nakamura.util.PersonalUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -210,9 +209,6 @@ public class SolrSearchServlet extends SlingSafeMethodsServlet {
   @Reference(target = DEFAULT_SEARCH_PROC_TARGET)
   protected SolrSearchResultProcessor defaultSearchProcessor;
 
-
-  @Reference
-  protected transient ProfileService profileService;
 
 
   private Pattern homePathPattern = Pattern.compile("^(.*)(~([\\w-]*?))/");
@@ -373,7 +369,7 @@ public class SolrSearchServlet extends SlingSafeMethodsServlet {
       String homePrefix = homePathMatcher.group(1);
       UserManager um = AccessControlUtil.getUserManager(node.getSession());
       Authorizable au = um.getAuthorizable(username);
-      String homePath = homePrefix + profileService.getHomePath(au).substring(1) + "/";
+      String homePath = homePrefix + PersonalUtils.getHomePath(au).substring(1) + "/";
       queryString = homePathMatcher.replaceAll(homePath);
     }
     return queryString;

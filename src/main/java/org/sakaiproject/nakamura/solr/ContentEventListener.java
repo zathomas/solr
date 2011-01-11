@@ -296,6 +296,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
             LOGGER.warn("Unreadble Event at {} {} ",currentInFile, lineNo);            
           }
         }
+        
+        LOGGER.info("Processing a batch of {} items, redolog at {}:{}", new Object[]{events.size(),currentInFile,lineNo});
 
         SolrServer service = solrServerService.getServer();
         try {
