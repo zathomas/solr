@@ -198,7 +198,7 @@ public class SolrSearchServlet extends SlingSafeMethodsServlet {
   private static final String DEFAULT_BATCH_SEARCH_PROC_TARGET = "(&("
       + SolrSearchBatchResultProcessor.DEFAULT_BATCH_PROCESSOR_PROP + "=true))";
   @Reference(target = DEFAULT_BATCH_SEARCH_PROC_TARGET)
-  protected SolrSearchBatchResultProcessor defaultSearchBatchProcessor;
+  protected transient SolrSearchBatchResultProcessor defaultSearchBatchProcessor;
 
   /**
    * Reference uses property set on NodeSearchResultProcessor. Other processors can become
@@ -207,7 +207,7 @@ public class SolrSearchServlet extends SlingSafeMethodsServlet {
   private static final String DEFAULT_SEARCH_PROC_TARGET = "(&("
       + SolrSearchResultProcessor.DEFAULT_PROCESSOR_PROP + "=true))";
   @Reference(target = DEFAULT_SEARCH_PROC_TARGET)
-  protected SolrSearchResultProcessor defaultSearchProcessor;
+  protected transient SolrSearchResultProcessor defaultSearchProcessor;
 
 
 
@@ -237,6 +237,9 @@ public class SolrSearchServlet extends SlingSafeMethodsServlet {
         if (node.hasProperty(SAKAI_PROPERTY_PROVIDER)) {
           propertyProviderName = node.getProperty(SAKAI_PROPERTY_PROVIDER).getString();
         }
+        
+        // TODO: we might want to use this ?
+        @SuppressWarnings("unused")
         boolean limitResults = true;
         if (node.hasProperty(SAKAI_LIMIT_RESULTS)) {
           limitResults = node.getProperty(SAKAI_LIMIT_RESULTS).getBoolean();
@@ -446,8 +449,7 @@ public class SolrSearchServlet extends SlingSafeMethodsServlet {
                     .warn("Invalid Search template, you cant use sortOn parameters that "
                         + "could produce sorts on child nodes as this is likely to stop the server dead, ignoring sort order and using default ");
                 rpVal = null;
-              }
-              if (rpVal.indexOf('/') >= 0 || rpVal.indexOf('@') >= 0) {
+              } else if (rpVal.indexOf('/') >= 0 || rpVal.indexOf('@') >= 0) {
                 LOGGER.warn("Attempt to sort on child node, {}, ignoring ", rpVal);
                 rpVal = null;
               }

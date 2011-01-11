@@ -155,12 +155,12 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
                 boolean matchesRead = false;
                 for (Value privilegeName : privilegeNames) {
                   Privilege p = acm.privilegeFromName(privilegeName.getString());
-                  if (Privilege.JCR_READ.equals(p)) {
+                  if (Privilege.JCR_READ.equals(p.getName())) {
                     matchesRead = true;
                     break;
                   } else {
                     for (Privilege ap : p.getAggregatePrivileges()) {
-                      if (Privilege.JCR_READ.equals(ap)) {
+                      if (Privilege.JCR_READ.equals(ap.getName())) {
                         matchesRead = true;
                         break;
                       }

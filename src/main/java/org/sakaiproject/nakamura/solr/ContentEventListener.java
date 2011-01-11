@@ -296,9 +296,9 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
             LOGGER.warn("Unreadble Event at {} {} ",currentInFile, lineNo);            
           }
         }
-        
-        LOGGER.info("Processing a batch of {} items, redolog at {}:{}", new Object[]{events.size(),currentInFile,lineNo});
-
+        if ( events.size() > 0 ) {
+          LOGGER.info("Processing a batch of {} items, redolog at {}:{}", new Object[]{events.size(),currentInFile,lineNo});
+        }
         SolrServer service = solrServerService.getServer();
         try {
           boolean needsCommit = false;
@@ -368,69 +368,6 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     }
   }
 
-  private void perEventRun() {
-    while (running) {
-      try {
-        Event event = readEvent(5000L);
-        String topic = event.getTopic();
-        IndexingHandler contentIndexHandler = handlers.get(topic);
-        LOGGER.debug("Got Handler {} for event {} {}", new Object[] {
-            contentIndexHandler, event, event.getProperty("path") });
-        if (contentIndexHandler != null) {
-          SolrServer service = solrServerService.getServer();
-          try {
-            boolean needsCommit = false;
-            for (String deleteQuery : contentIndexHandler.getDeleteQueries(
-                repositorySession, event)) {
-              if (service != null) {
-                LOGGER.debug("Added delete Query {} ", deleteQuery);
-                try {
-                  service.deleteByQuery(deleteQuery);
-                  needsCommit = true;
-                } catch (SolrServerException e) {
-                  LOGGER.info(" Failed to delete {}  cause :{}", deleteQuery,
-                      e.getMessage());
-                }
-              }
-            }
-            Collection<SolrInputDocument> docs = contentIndexHandler.getDocuments(
-                repositorySession, event);
-            if (service != null) {
-              if (docs != null && docs.size() > 0) {
-                LOGGER.debug("Adding Docs {} ", docs);
-                service.add(docs);
-                needsCommit = true;
-              }
-            }
-            if (needsCommit) {
-              service.commit();
-            }
-
-            savePosition();
-          } catch (SolrServerException e) {
-            try {
-              service.rollback();
-            } catch (Exception e1) {
-              LOGGER.warn(e.getMessage(), e1);
-            }
-          } catch (IOException e) {
-            LOGGER.warn(e.getMessage(), e);
-          } catch (SolrException e) {
-            LOGGER.warn(e.getMessage(), e);
-          }
-        } else {
-          savePosition();
-        }
-      } catch (IOException e) {
-        if (running) {
-          LOGGER.warn(e.getMessage(), e);
-        } else {
-          LOGGER.debug("Closing Down Indexer Event Queue");
-        }
-      }
-    }
-
-  }
 
   private Event readEvent(long timeout) throws IOException {
     String line = nextEvent(timeout);
@@ -495,7 +432,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
               for (File f : files ) {
                 if ( f.lastModified() > loadedAt ) {
                     if ( nextFile == null ) {
-                      nextFile = null;
+                      nextFile = f;
                     } else if ( f.lastModified() < nextFile.lastModified() ) {
                       nextFile = f;
                     }
@@ -543,9 +480,13 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     if (deleteQueue != null) {
       for (File f : deleteQueue) {
         LOGGER.info("Deleting Reader File {} ", f);
-        f.delete();
+        if ( !f.delete() ) {
+          LOGGER.debug("Failed to delete Redo file, {} might be an issue",f);          
+        }
       }
-      positionFile.delete();
+      if ( !positionFile.delete() ) {
+        LOGGER.debug("Failed to delete Possition file, {} might be an issue",positionFile);
+      }
       deleteQueue.clear();
       deleteQueue = null;
     }
@@ -562,7 +503,9 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   private void savePosition() throws IOException {
     if (currentInFile == null) {
-      positionFile.delete();
+      if ( !positionFile.delete() ) {
+        LOGGER.debug("Failed to delete Possition file, {} might be an issue",positionFile);
+      }
     } else {
       FileWriter position = new FileWriter(positionFile);
       position.write(URLEncoder.encode(currentInFile.getAbsolutePath(), "UTF8"));
@@ -575,14 +518,23 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   private void loadPosition() throws IOException {
     if (positionFile.exists()) {
-      BufferedReader position = new BufferedReader(new FileReader(positionFile));
-      String[] filePos = StringUtils.split(position.readLine(), ',');
-      if (filePos != null && filePos.length == 2) {
-        currentInFile = new File(URLDecoder.decode(filePos[0], "UTF8"));
-        if (currentInFile.exists()) {
-          lineNo = Integer.parseInt(filePos[1]);
-          loadPosition(currentInFile, lineNo);
-          return;
+      BufferedReader position = null;
+      try {
+        position = new BufferedReader(new FileReader(positionFile));
+        String[] filePos = StringUtils.split(position.readLine(), ',');
+        if (filePos != null && filePos.length == 2) {
+          currentInFile = new File(URLDecoder.decode(filePos[0], "UTF8"));
+          if (currentInFile.exists()) {
+            lineNo = Integer.parseInt(filePos[1]);
+            loadPosition(currentInFile, lineNo);
+            return;
+          }
+        }
+      } finally {
+        try {
+          position.close();
+        } catch ( IOException e) {
+          LOGGER.debug("Failed to close {} ", positionFile);
         }
       }
     }
@@ -650,12 +602,18 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     if (currentInFile != null) {
       if (deleteQueue != null) {
         deleteQueue.add(currentInFile);
-        positionFile.delete();
+        if ( !positionFile.delete() ) {
+          LOGGER.debug("Failed to delete Position file, {} might be an issue",positionFile);
+        }
         currentInFile = null;
       } else {
         LOGGER.info("Deleting Reader File {} ", currentInFile);
-        currentInFile.delete();
-        positionFile.delete();
+        if (!currentInFile.delete() ) {
+          LOGGER.debug("Failed to delete Redo file, {} might be an issue",currentInFile);
+        }
+        if ( !positionFile.delete() ) {
+          LOGGER.debug("Failed to delete Position file, {} might be an issue",positionFile);
+        }
         currentInFile = null;
       }
     }
