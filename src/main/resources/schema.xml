@@ -436,8 +436,20 @@
    <field name="content" type="text" indexed="true" stored="true" termVectors="true" termPositions="true" termOffsets="true" />
    <field name="lastModifiedBy" type="string" indexed="true" stored="true" /> 
    <field name="lastModified" type="date" indexed="true" stored="true" /> 
+   <field name="readers" type="string" indexed="true" stored="true" multiValued="true" /> 
    
-   <dynamicField name="sakai:*"  type="string"  indexed="true"  stored="true"/>
+   <!--  sakai/pooled-content -->
+   <field name="needsupdate" type="string" indexed="true" stored="true" />
+   <field name="manager" type="string" indexed="true" stored="true"  multiValued="true" />
+   <field name="viewer" type="string" indexed="true" stored="true"  multiValued="true" />
+   <field name="filename" type="string" indexed="true" stored="true" />
+   <field name="file" type="string" indexed="true" stored="true" />
+   <field name="tagname" type="string" indexed="true" stored="true" />
+   <field name="taguuid" type="string" indexed="true" stored="true" />
+   <field name="tag" type="string" indexed="true" stored="true"  multiValued="true" />
+
+   <!--  general sakai -->   
+   <dynamicField name="sakai*"  type="string"  indexed="true"  stored="true"/>
    
 <!-- 
    <field name="id" type="string" indexed="true" stored="true" required="true" /> 
