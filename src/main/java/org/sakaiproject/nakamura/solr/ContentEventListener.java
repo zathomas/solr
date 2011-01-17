@@ -649,7 +649,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     handlers.put(topic, handler);
   }
 
-  public void removeHander(String topic, IndexingHandler handler) {
+  public void removeHandler(String topic, IndexingHandler handler) {
     if (handler.equals(handlers.get(topic))) {
       handlers.remove(topic);
     }

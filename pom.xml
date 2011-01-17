@@ -98,16 +98,9 @@
       <version>2.4</version>
      </dependency>
      
-     
      <dependency>
         <groupId>org.sakaiproject.nakamura</groupId>
         <artifactId>org.sakaiproject.nakamura.doc</artifactId>
-        <version>0.10-SNAPSHOT</version>
-     </dependency>
-
-     <dependency>
-        <groupId>org.sakaiproject.nakamura</groupId>
-        <artifactId>org.sakaiproject.nakamura.personal</artifactId>
         <version>0.10-SNAPSHOT</version>
      </dependency>
 

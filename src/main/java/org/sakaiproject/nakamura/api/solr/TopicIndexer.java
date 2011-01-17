@@ -24,6 +24,6 @@ public interface TopicIndexer {
    * @param handler
    *          the handler that was registered.
    */
-  void removeHander(String topic, IndexingHandler handler);
+  void removeHandler(String topic, IndexingHandler handler);
 
 }

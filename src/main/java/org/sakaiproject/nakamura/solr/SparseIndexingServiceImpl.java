@@ -76,7 +76,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
   @Deactivate
   public void deactivate(Map<String, Object> properties) {
     for (String topic : topics) {
-      contentIndexer.removeHander(topic, this);
+      contentIndexer.removeHandler(topic, this);
     }
   }
 
@@ -171,7 +171,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     indexers.put( key, handler);
   }
 
-  public void removeHander(String key, IndexingHandler handler) {
+  public void removeHandler(String key, IndexingHandler handler) {
     if (handler.equals(indexers.get(key))) {
       indexers.remove(key);
     }

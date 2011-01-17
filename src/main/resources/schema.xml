@@ -448,6 +448,13 @@
    <field name="taguuid" type="string" indexed="true" stored="true" />
    <field name="tag" type="string" indexed="true" stored="true"  multiValued="true" />
 
+   <!-- sakai authorizables -->
+   <field name="name" type="string" indexed="true" stored="true" />
+   <field name="firstName" type="string" indexed="true" stored="true" />
+   <field name="lastName" type="string" indexed="true" stored="true" />
+   <field name="email" type="string" indexed="true" stored="true" />
+   <field name="type" type="string" indexed="true" stored="true" />
+
    <!--  general sakai -->   
    <dynamicField name="sakai*"  type="string"  indexed="true"  stored="true"/>
    

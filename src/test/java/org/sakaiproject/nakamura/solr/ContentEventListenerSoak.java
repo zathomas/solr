@@ -103,7 +103,7 @@ public class ContentEventListenerSoak {
     contentEventListener.closeWriter();
     LOGGER.info("Done adding Events ");
 
-    contentEventListener.removeHander("/test/topic", h);
+    contentEventListener.removeHandler("/test/topic", h);
 
     contentEventListener.deactivate(properties);
 

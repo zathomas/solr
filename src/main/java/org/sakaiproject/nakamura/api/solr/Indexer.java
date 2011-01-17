@@ -28,6 +28,6 @@ public interface Indexer {
    * @param handler
    *          the handler
    */
-  void removeHander(String key, IndexingHandler handler);
+  void removeHandler(String key, IndexingHandler handler);
 
 }

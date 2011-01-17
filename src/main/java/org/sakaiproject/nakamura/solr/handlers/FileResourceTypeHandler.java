@@ -35,7 +35,7 @@ public class FileResourceTypeHandler extends DefaultResourceTypeHandler {
 
   @Deactivate
   public void deactivate(Map<String, Object> properties) {
-    resourceIndexingService.removeHander("nt:file", this);
+    resourceIndexingService.removeHandler("nt:file", this);
   }
 
   public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession, Event event) {
