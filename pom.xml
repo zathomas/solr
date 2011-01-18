@@ -47,7 +47,6 @@
                *
              </Import-Package>
             <Private-Package>org.sakaiproject.nakamura.solr.*, org.apache.solr.core;-split-package:=merge-first</Private-Package>
-            <Sling-Initial-Content>SLING-INF/content;overwriteProperties:=true;uninstall:=false</Sling-Initial-Content>
             <Embed-Transitive>true</Embed-Transitive>
             <Embed-Dependency>
                solr-core,
@@ -98,17 +97,6 @@
       <version>2.4</version>
      </dependency>
      
-     <dependency>
-        <groupId>org.sakaiproject.nakamura</groupId>
-        <artifactId>org.sakaiproject.nakamura.doc</artifactId>
-        <version>0.10-SNAPSHOT</version>
-     </dependency>
-
-     <dependency>
-        <groupId>org.sakaiproject.nakamura</groupId>
-        <artifactId>org.sakaiproject.nakamura.resource</artifactId>
-        <version>0.10-SNAPSHOT</version>
-     </dependency>
      
      
     <!-- We also need slf4j -->
@@ -130,15 +118,22 @@
       <artifactId>org.osgi.compendium</artifactId>
     </dependency>
     
+    
+    <dependency>
+     <groupId>org.sakaiproject.nakamura</groupId>
+     <artifactId>org.sakaiproject.nakamura.core</artifactId>
+     <version>0.10-SNAPSHOT</version>
+    </dependency>
+    
     <dependency>
      <groupId>org.apache.sling</groupId>
-     <artifactId>org.apache.sling.jcr.api</artifactId>
+     <artifactId>org.apache.sling.api</artifactId>
      <version>2.1.0</version>
     </dependency>
     <dependency>
      <groupId>org.apache.sling</groupId>
-     <artifactId>org.apache.sling.commons.json</artifactId>
-     <version>2.0.4-incubator</version>
+     <artifactId>org.apache.sling.jcr.api</artifactId>
+     <version>2.1.0</version>
     </dependency>
     <dependency>
       <groupId>com.google.collections</groupId>
