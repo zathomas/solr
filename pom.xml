@@ -29,7 +29,9 @@
             <Export-Package>
               org.sakaiproject.nakamura.api.solr.*,
               org.apache.solr.common,
-              org.apache.solr.client.solrj
+              org.apache.solr.common.params,
+              org.apache.solr.client.solrj,
+              org.apache.solr.client.solrj.response
 			</Export-Package>
 			<Import-Package>
 			!org.apache.noggit,
