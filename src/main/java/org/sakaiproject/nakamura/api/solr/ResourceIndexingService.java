@@ -1,5 +1,6 @@
 package org.sakaiproject.nakamura.api.solr;
 
+
 /**
  * Indexing service that indexes Resources.
  */

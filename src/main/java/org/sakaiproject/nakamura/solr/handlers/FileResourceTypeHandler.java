@@ -18,7 +18,6 @@ import javax.jcr.Node;
 import javax.jcr.Property;
 import javax.jcr.PropertyIterator;
 import javax.jcr.RepositoryException;
-import javax.jcr.Session;
 
 @Component
 public class FileResourceTypeHandler extends DefaultResourceTypeHandler {
@@ -27,25 +26,28 @@ public class FileResourceTypeHandler extends DefaultResourceTypeHandler {
       .getLogger(FileResourceTypeHandler.class);
   @Reference(target="(type=jcr)")
   protected ResourceIndexingService resourceIndexingService;
+  
+  
 
   @Activate
   public void activate(Map<String, Object> properties) {
     resourceIndexingService.addHandler("nt:file", this);
+    setResourceIndexingService(resourceIndexingService);
   }
+
 
   @Deactivate
   public void deactivate(Map<String, Object> properties) {
     resourceIndexingService.removeHandler("nt:file", this);
+    setResourceIndexingService(null);
   }
 
   public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession, Event event) {
     Collection<SolrInputDocument> docs = super.getDocuments(repositorySession, event);
     for (SolrInputDocument d : docs) {
-      String id = (String) d.getFieldValue("id");
-      LOGGER.debug("Adding File Information to  {} ", id);
+      Node n = (Node) d.getFieldValue(_DOC_SOURCE_OBJECT);
+      LOGGER.debug("Adding File Information to  {} ", n);
       try {
-        Session session = repositorySession.adaptTo(Session.class);
-        Node n = session.getNode(id);
         if (n.hasNode(Node.JCR_CONTENT)) {
           Node content = n.getNode(Node.JCR_CONTENT);
           if (content != null) {

@@ -15,10 +15,15 @@ import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.solr.common.SolrInputDocument;
 import org.osgi.service.event.Event;
+import org.sakaiproject.nakamura.api.lite.Session;
 import org.sakaiproject.nakamura.api.lite.StorageClientException;
 import org.sakaiproject.nakamura.api.lite.StorageClientUtils;
 import org.sakaiproject.nakamura.api.lite.StoreListener;
+import org.sakaiproject.nakamura.api.lite.accesscontrol.AccessControlManager;
 import org.sakaiproject.nakamura.api.lite.accesscontrol.AccessDeniedException;
+import org.sakaiproject.nakamura.api.lite.accesscontrol.Permissions;
+import org.sakaiproject.nakamura.api.lite.accesscontrol.Security;
+import org.sakaiproject.nakamura.api.lite.authorizable.Authorizable;
 import org.sakaiproject.nakamura.api.lite.content.Content;
 import org.sakaiproject.nakamura.api.lite.content.ContentManager;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
@@ -44,7 +49,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
   private static final Logger LOGGER = LoggerFactory
       .getLogger(SparseIndexingServiceImpl.class);
   // these are the names of system properites.
-  private static final Set<String> SYSTEM_PROPERTIES = ImmutableSet.of("id", "readers");
+  private static final Set<String> SYSTEM_PROPERTIES = ImmutableSet.of(FIELD_ID, FIELD_READERS);
 
   @Reference
   protected TopicIndexer contentIndexer;
@@ -84,7 +89,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
       Event event) {
     String topic = event.getTopic();
     if (topic.endsWith(StoreListener.UPDATED_TOPIC) || topic.endsWith(StoreListener.ADDED_TOPIC)) {
-      String path = (String) event.getProperty("path");
+      String path = (String) event.getProperty(FIELD_PATH);
       if (!ignore(path)) {
         LOGGER.debug("Update action at path:{}  require on {} ", path, event);
         Collection<SolrInputDocument> docs = getHander(repositorySession, path)
@@ -93,7 +98,12 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
         for (SolrInputDocument doc : docs) {
           for (String name : doc.getFieldNames()) {
             if (!SYSTEM_PROPERTIES.contains(name)) {
-              outputDocs.add(doc);
+              try {
+                addDefaultFields(doc, repositorySession);
+                outputDocs.add(doc);
+              } catch (StorageClientException e) {
+                LOGGER.warn("Failed to index {} cause: {} ",path,e.getMessage());
+              }
               break;
             }
           }
@@ -106,6 +116,53 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
       LOGGER.info("No update action require on {} ", event);
     }
     return ImmutableList.of();
+  }
+
+  private void addDefaultFields(SolrInputDocument doc, RepositorySession repositorySession) throws StorageClientException {
+    Object o = doc.getFieldValue(_DOC_SOURCE_OBJECT);
+    if ( o instanceof Content ) {
+      Content content = (Content) o;
+      String[] principals = getReadingPrincipals(repositorySession, Security.ZONE_CONTENT, content.getPath());
+      for (String principal : principals) {
+        doc.addField(FIELD_READERS, principal);
+      }
+      if ( content.hasProperty("sling:resourceType")) {
+        doc.setField(FIELD_RESOURCE_TYPE, StorageClientUtils.toString(content.getProperty("sling:resourceType")));
+      }
+      String path = content.getPath();
+      doc.setField(FIELD_ID, path);
+      while( path != null ) {
+        doc.addField(FIELD_PATH, path);
+        String newPath = Utils.getParentPath(path);
+        if ( path.equals(newPath) ) {
+          break;
+        }
+        path = newPath;
+      }
+      doc.removeField(_DOC_SOURCE_OBJECT);
+    } else if ( o instanceof Authorizable ) {
+      Authorizable authorizable = (Authorizable) o;
+      String[] principals = getReadingPrincipals(repositorySession, Security.ZONE_AUTHORIZABLES, authorizable.getId());
+      for (String principal : principals) {
+        doc.addField(FIELD_READERS, principal);
+      }
+      doc.setField(FIELD_RESOURCE_TYPE, "authorizable");
+      doc.setField(FIELD_ID, authorizable.getId());
+      doc.removeField(_DOC_SOURCE_OBJECT);
+      
+    } else {
+      LOGGER.error("Note to Developer: Indexer must add the _source fields so that the default fields can be set, please correct, SolrDoc was {} ",doc);
+      throw new StorageClientException(_DOC_SOURCE_OBJECT+" fields was missing from Solr Document, please correct the handler implementation");
+
+    }
+  }
+
+
+  private String[] getReadingPrincipals(RepositorySession repositorySession,
+      String zone, String path) throws StorageClientException {
+    Session session = repositorySession.adaptTo(Session.class);
+    AccessControlManager accessControlManager = session.getAccessControlManager();
+    return accessControlManager.findPrincipals(zone, path,Permissions.CAN_READ.getPermission(), true);
   }
 
   private IndexingHandler getHander(RepositorySession repositorySession, String path) {
@@ -154,7 +211,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
       Event event) {
     String topic = event.getTopic();
     if (topic.endsWith(StoreListener.DELETE_TOPIC) || topic.endsWith(StoreListener.UPDATED_TOPIC)) {
-      String path = (String) event.getProperty("path");
+      String path = (String) event.getProperty(FIELD_PATH);
       if (!ignore(path)) {
         return getHander(repositorySession, path).getDeleteQueries(repositorySession,
             event);

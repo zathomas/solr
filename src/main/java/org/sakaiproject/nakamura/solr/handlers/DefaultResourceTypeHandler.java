@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.solr.common.SolrInputDocument;
@@ -12,6 +11,7 @@ import org.apache.solr.schema.DateField;
 import org.osgi.service.event.Event;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
 import org.sakaiproject.nakamura.api.solr.RepositorySession;
+import org.sakaiproject.nakamura.api.solr.ResourceIndexingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,21 +19,15 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 
-import javax.jcr.AccessDeniedException;
-import javax.jcr.ItemNotFoundException;
 import javax.jcr.Node;
-import javax.jcr.NodeIterator;
 import javax.jcr.Property;
 import javax.jcr.PropertyIterator;
 import javax.jcr.PropertyType;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.Value;
-import javax.jcr.security.AccessControlManager;
-import javax.jcr.security.Privilege;
 
 public class DefaultResourceTypeHandler implements IndexingHandler {
 
@@ -46,6 +40,7 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
       PropertyType.PATH, PropertyType.REFERENCE, PropertyType.WEAKREFERENCE);
   private static final Map<String, String> INDEX_FIELD_MAP = ImmutableMap.of("jcr:data",
       "content");
+  private ResourceIndexingService resourceIndexingService;
 
   public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession, Event event) {
     LOGGER.debug("GetDocuments for {} ", event);
@@ -59,7 +54,6 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
         Session session = repositorySession.adaptTo(Session.class);
         Node n = session.getNode(path);
         if (n != null) {
-          String[] principals = getReadingPrincipals(n);
           SolrInputDocument doc = new SolrInputDocument();
           int nadd = 0;
           PropertyIterator pi = n.getProperties();
@@ -86,17 +80,19 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
             }
           }
           LOGGER.debug("Added {} ", nadd);
-          for (String principal : principals) {
-            doc.addField("readers", principal);
-          }
-          doc.addField("id", path);
+          doc.setField(_DOC_SOURCE_OBJECT, n);
           documents.add(doc);
+          
         }
       } catch (RepositoryException e) {
         LOGGER.error(e.getMessage(), e);
       }
     }
     return documents;
+  }
+  
+  protected void setResourceIndexingService(ResourceIndexingService resourceIndexingService) {
+    this.resourceIndexingService = resourceIndexingService;
   }
 
   public Collection<String> getDeleteQueries(RepositorySession repositorySession, Event event) {
@@ -125,114 +121,6 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
     return false;
   }
 
-  /**
-   * Gets the principals that can read the node. Principals are stored as protected nodes.
-   * If the node has a mix:accessControllable then it will have a sub node rep:policy
-   * which will have one or more nodes of type rep:GrantACE or rep:DenyACE each of those
-   * nodes has a principal name and privileges.
-   * 
-   * At the node we need to build a set of all principals that have the read bit set by
-   * looking at the current node and then looking at its parent and so on
-   * 
-   * @param n
-   * @return
-   */
-  private String[] getReadingPrincipals(Node n) {
-    List<String> principals = Lists.newArrayList();
-    try {
-      Map<String, Boolean> readPrincipals = Maps.newHashMap();
-      Session session = n.getSession();
-      AccessControlManager acm = session.getAccessControlManager();
-      while (n != null ) {
-        if (n.hasNode("rep:policy")) {
-          try {
-            Node policy = n.getNode("rep:policy");
-            for (NodeIterator ni = policy.getNodes(); ni.hasNext();) {
-              Node ace = ni.nextNode();
-              try {
-                String principal = ace.getProperty("rep:principalName").getString();
-                Value[] privilegeNames = ace.getProperty("rep:privileges").getValues();
-                boolean matchesRead = false;
-                for (Value privilegeName : privilegeNames) {
-                  Privilege p = acm.privilegeFromName(privilegeName.getString());
-                  if (Privilege.JCR_READ.equals(p.getName())) {
-                    matchesRead = true;
-                    break;
-                  } else {
-                    for (Privilege ap : p.getAggregatePrivileges()) {
-                      if (Privilege.JCR_READ.equals(ap.getName())) {
-                        matchesRead = true;
-                        break;
-                      }
-                    }
-                    if (matchesRead) {
-                      break;
-                    }
-                  }
-                }
-
-                Boolean canRead = readPrincipals.get(principal);
-                if (matchesRead) {
-                  if (!canRead) {
-                    // already denied
-                    continue;
-                  } else if (canRead) {
-                    // has been granted already
-                    if ("rep:GrantACE".equals(ace.getPrimaryNodeType().getName())) {
-                    } else {
-                      // deny
-                      readPrincipals.put(principal, Boolean.FALSE);
-                    }
-                  } else {
-                    if ("rep:GrantACE".equals(ace.getPrimaryNodeType().getName())) {
-                      // deny
-                      readPrincipals.put(principal, Boolean.TRUE);
-                    } else {
-                      // deny
-                      readPrincipals.put(principal, Boolean.FALSE);
-                    }
-                  }
-                }
-              } catch (RepositoryException e) {
-                LOGGER.info("Ignoring ace node {} cause: {}", ace.getPath(),
-                    e.getMessage());
-              }
-            }
-          } catch (RepositoryException e) {
-            LOGGER.info("Ignoring policy node on {} cause: {}", n.getPath(),
-                e.getMessage());
-          }
-        }
-        try {
-          if ( "/".equals(n.getPath()) ) {
-            break;
-          }
-          n = n.getParent();
-        } catch (AccessDeniedException e) {
-          LOGGER.info("Failed to get Parent node  {} cause: {}", n.getPath(),
-              e.getMessage());
-          break;
-        } catch (ItemNotFoundException e) {
-          LOGGER.info("Failed to get Parent node  {} cause: {}", n.getPath(),
-              e.getMessage());
-          break;
-        } catch (RepositoryException e) {
-          LOGGER.info("Failed to get Parent node  {} cause: {}", n.getPath(),
-              e.getMessage());
-          break;
-        }
-      }
-      for (Entry<String, Boolean> readPrincipal : readPrincipals.entrySet()) {
-        if (readPrincipal.getValue()) {
-          principals.add(readPrincipal.getKey());
-        }
-      }
-    } catch (RepositoryException e) {
-      LOGGER.info("Failed to process ACLs on {} cause: {}", n, e.getMessage());
-    }
-    return principals.toArray(new String[principals.size()]);
-
-  }
 
   protected Iterable<Object> convertToIndex(Property p) throws RepositoryException {
     Value[] v = null;

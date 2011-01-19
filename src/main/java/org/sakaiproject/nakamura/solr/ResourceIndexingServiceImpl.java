@@ -27,11 +27,18 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
+import javax.jcr.AccessDeniedException;
+import javax.jcr.ItemNotFoundException;
 import javax.jcr.Node;
+import javax.jcr.NodeIterator;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
+import javax.jcr.Value;
+import javax.jcr.security.AccessControlManager;
+import javax.jcr.security.Privilege;
 
 @Component(immediate = true, metatype = true)
 @Service(value = ResourceIndexingService.class)
@@ -48,7 +55,7 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
   private static final Logger LOGGER = LoggerFactory
       .getLogger(ResourceIndexingServiceImpl.class);
   // these are the names of system properites.
-  private static final Set<String> SYSTEM_PROPERTIES = ImmutableSet.of("id", "readers");
+  private static final Set<String> SYSTEM_PROPERTIES = ImmutableSet.of("id", FIELD_READERS);
 
   @Reference
   protected TopicIndexer contentIndexer;
@@ -100,7 +107,12 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
         for (SolrInputDocument doc : docs) {
           for (String name : doc.getFieldNames()) {
             if (!SYSTEM_PROPERTIES.contains(name)) {
-              outputDocs.add(doc);
+              try {
+                addDefaultFields(doc);
+                outputDocs.add(doc);
+              } catch (RepositoryException e) {
+                LOGGER.error("Failed to index {} cause: {} ",path, e.getMessage());
+              }
               break;
             }
           }
@@ -112,6 +124,36 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
     }
     return ImmutableList.of();
   }
+  
+  private void addDefaultFields(SolrInputDocument doc) throws RepositoryException {
+    Node node = (Node) doc.getFieldValue(_DOC_SOURCE_OBJECT);
+    if ( node != null ) {
+      String[] principals = getReadingPrincipals(node);
+      for (String principal : principals) {
+        doc.addField(FIELD_READERS, principal);
+      }
+      String resourceType = node.getPrimaryNodeType().getName();
+      if ( node.hasProperty("sling:resourceType")) {
+        resourceType = node.getProperty("sling:resourceType").getString();
+      }
+      doc.addField(FIELD_RESOURCE_TYPE, resourceType);
+      String path = node.getPath();
+      doc.setField(FIELD_ID, path);
+      while( path != null ) {
+        doc.addField(FIELD_PATH, path);
+        String newPath = Utils.getParentPath(path);
+        if ( path.equals(newPath) ) {
+          break;
+        }
+        path = newPath;
+      }
+      doc.removeField(_DOC_SOURCE_OBJECT);
+    } else {
+      LOGGER.error("Note to Developer: Indexer must add the _source fields so that the default fields can be set, please correct, SolrDoc was {} ",doc);
+      throw new RepositoryException(_DOC_SOURCE_OBJECT+" fields was missing from Solr Document, please correct the handler implementation");
+    } 
+  }
+
 
   private IndexingHandler getHander(RepositorySession repositorySession, String path) {
     Session session = repositorySession.adaptTo(Session.class);
@@ -218,5 +260,118 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
       indexers.remove(key);
     }
   }
+
+  
+
+/**
+ * Gets the principals that can read the node. Principals are stored as protected nodes.
+ * If the node has a mix:accessControllable then it will have a sub node rep:policy
+ * which will have one or more nodes of type rep:GrantACE or rep:DenyACE each of those
+ * nodes has a principal name and privileges.
+ * 
+ * At the node we need to build a set of all principals that have the read bit set by
+ * looking at the current node and then looking at its parent and so on
+ * 
+ * @param n
+ * @return
+ */
+private String[] getReadingPrincipals(Node n) {
+  List<String> principals = Lists.newArrayList();
+  try {
+    Map<String, Boolean> readPrincipals = Maps.newHashMap();
+    Session session = n.getSession();
+    AccessControlManager acm = session.getAccessControlManager();
+    while (n != null ) {
+      if (n.hasNode("rep:policy")) {
+        try {
+          Node policy = n.getNode("rep:policy");
+          for (NodeIterator ni = policy.getNodes(); ni.hasNext();) {
+            Node ace = ni.nextNode();
+            try {
+              String principal = ace.getProperty("rep:principalName").getString();
+              Value[] privilegeNames = ace.getProperty("rep:privileges").getValues();
+              boolean matchesRead = false;
+              for (Value privilegeName : privilegeNames) {
+                Privilege p = acm.privilegeFromName(privilegeName.getString());
+                if (Privilege.JCR_READ.equals(p.getName())) {
+                  matchesRead = true;
+                  break;
+                } else {
+                  for (Privilege ap : p.getAggregatePrivileges()) {
+                    if (Privilege.JCR_READ.equals(ap.getName())) {
+                      matchesRead = true;
+                      break;
+                    }
+                  }
+                  if (matchesRead) {
+                    break;
+                  }
+                }
+              }
+
+              Boolean canRead = readPrincipals.get(principal);
+              if (matchesRead) {
+                if (!canRead) {
+                  // already denied
+                  continue;
+                } else if (canRead) {
+                  // has been granted already
+                  if ("rep:GrantACE".equals(ace.getPrimaryNodeType().getName())) {
+                  } else {
+                    // deny
+                    readPrincipals.put(principal, Boolean.FALSE);
+                  }
+                } else {
+                  if ("rep:GrantACE".equals(ace.getPrimaryNodeType().getName())) {
+                    // deny
+                    readPrincipals.put(principal, Boolean.TRUE);
+                  } else {
+                    // deny
+                    readPrincipals.put(principal, Boolean.FALSE);
+                  }
+                }
+              }
+            } catch (RepositoryException e) {
+              LOGGER.info("Ignoring ace node {} cause: {}", ace.getPath(),
+                  e.getMessage());
+            }
+          }
+        } catch (RepositoryException e) {
+          LOGGER.info("Ignoring policy node on {} cause: {}", n.getPath(),
+              e.getMessage());
+        }
+      }
+      try {
+        if ( "/".equals(n.getPath()) ) {
+          break;
+        }
+        n = n.getParent();
+      } catch (AccessDeniedException e) {
+        LOGGER.info("Failed to get Parent node  {} cause: {}", n.getPath(),
+            e.getMessage());
+        break;
+      } catch (ItemNotFoundException e) {
+        LOGGER.info("Failed to get Parent node  {} cause: {}", n.getPath(),
+            e.getMessage());
+        break;
+      } catch (RepositoryException e) {
+        LOGGER.info("Failed to get Parent node  {} cause: {}", n.getPath(),
+            e.getMessage());
+        break;
+      }
+    }
+    for (Entry<String, Boolean> readPrincipal : readPrincipals.entrySet()) {
+      if (readPrincipal.getValue()) {
+        principals.add(readPrincipal.getKey());
+      }
+    }
+  } catch (RepositoryException e) {
+    LOGGER.info("Failed to process ACLs on {} cause: {}", n, e.getMessage());
+  }
+  return principals.toArray(new String[principals.size()]);
+
+}
+
+
 
 }

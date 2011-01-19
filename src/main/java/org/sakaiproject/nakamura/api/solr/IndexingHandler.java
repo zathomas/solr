@@ -19,7 +19,35 @@ import java.util.Collection;
 public interface IndexingHandler {
 
   /**
-   * Get a Collection of documents to be added to the index based on the exvent.
+   * Each Solr document that is to be indexed must set this field, so that the core indexing handlers can ensure that
+   * the required fields are set. It will be removed before indexing takes place. 
+   */
+  public static final String _DOC_SOURCE_OBJECT = "_source";
+  
+  
+  /**
+   * The Solr Fields for the ID of the document, must be unique.
+   */
+  public static final String FIELD_ID = "id";
+
+  /**
+   * The Solr Field name for principals that can read, multivalued.
+   */
+  public static final String FIELD_READERS = "readers";
+
+
+  /**
+   * Standard, field, contains the Resource Type of the item.
+   */
+  public static final String FIELD_RESOURCE_TYPE = "resourceType";
+
+  /**
+   * The Field containing paths to the object.
+   */
+  public static final String FIELD_PATH = "path";
+
+  /**
+   * Get a Collection of documents to be added to the index based on the event.
    * 
    * @param repositorySession
    *          an adaptable RepositorySession.

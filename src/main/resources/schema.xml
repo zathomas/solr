@@ -431,6 +431,7 @@
    -->
    
    <field name="id" type="string" indexed="true" stored="true" required="true" /> 
+   <field name="resourceType" type="string" indexed="true" stored="true"  />
    <field name="someother" type="string" indexed="true" stored="true" multiValued="true" /> 
    <field name="sakai.group" type="string" indexed="true" stored="true" /> 
    <field name="content" type="text" indexed="true" stored="true" termVectors="true" termPositions="true" termOffsets="true" />
@@ -445,7 +446,7 @@
    <field name="filename" type="string" indexed="true" stored="true" />
    <field name="file" type="string" indexed="true" stored="true" />
    <field name="tagname" type="string" indexed="true" stored="true" />
-   <field name="taguuid" type="string" indexed="true" stored="true" />
+   <field name="taguuid" type="string" indexed="true" stored="true" multiValued="true" />
    <field name="tag" type="string" indexed="true" stored="true"  multiValued="true" />
 
    <!-- sakai authorizables -->
