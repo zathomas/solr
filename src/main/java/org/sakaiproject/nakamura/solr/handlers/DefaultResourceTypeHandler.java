@@ -11,7 +11,6 @@ import org.apache.solr.schema.DateField;
 import org.osgi.service.event.Event;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
 import org.sakaiproject.nakamura.api.solr.RepositorySession;
-import org.sakaiproject.nakamura.api.solr.ResourceIndexingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.jcr.Node;
+import javax.jcr.PathNotFoundException;
 import javax.jcr.Property;
 import javax.jcr.PropertyIterator;
 import javax.jcr.PropertyType;
@@ -40,7 +40,6 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
       PropertyType.PATH, PropertyType.REFERENCE, PropertyType.WEAKREFERENCE);
   private static final Map<String, String> INDEX_FIELD_MAP = ImmutableMap.of("jcr:data",
       "content");
-  private ResourceIndexingService resourceIndexingService;
 
   public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession, Event event) {
     LOGGER.debug("GetDocuments for {} ", event);
@@ -52,7 +51,12 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
     if (path != null) {
       try {
         Session session = repositorySession.adaptTo(Session.class);
-        Node n = session.getNode(path);
+        Node n = null;
+        try {
+          n = session.getNode(path);
+        } catch ( RepositoryException  e) {
+          LOGGER.debug("Could not find JCR node for indexing, ignoring {} ",path);
+        }
         if (n != null) {
           SolrInputDocument doc = new SolrInputDocument();
           int nadd = 0;
@@ -91,9 +95,6 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
     return documents;
   }
   
-  protected void setResourceIndexingService(ResourceIndexingService resourceIndexingService) {
-    this.resourceIndexingService = resourceIndexingService;
-  }
 
   public Collection<String> getDeleteQueries(RepositorySession repositorySession, Event event) {
     LOGGER.debug("GetDelete for {} ", event);
