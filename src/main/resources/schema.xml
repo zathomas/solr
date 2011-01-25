@@ -434,7 +434,8 @@
    <field name="resourceType" type="string" indexed="true" stored="true"  />
    <field name="someother" type="string" indexed="true" stored="true" multiValued="true" /> 
    <field name="sakai.group" type="string" indexed="true" stored="true" /> 
-   <field name="content" type="text" indexed="true" stored="true" termVectors="true" termPositions="true" termOffsets="true" />
+   <field name="content" type="text" indexed="true" stored="false" termVectors="true" termPositions="true" termOffsets="true" />
+   <field name="created" type="date" indexed="true" stored="true" />
    <field name="lastModifiedBy" type="string" indexed="true" stored="true" /> 
    <field name="lastModified" type="date" indexed="true" stored="true" /> 
    <field name="readers" type="string" indexed="true" stored="true" multiValued="true" /> 
@@ -534,6 +535,7 @@
         EXAMPLE:  name="*_i" will match any field ending in _i (like myid_i, z_i)
         Longer patterns will be matched first.  if equal size patterns
         both match, the first appearing in the schema will be used.  -->
+   <!--
    <dynamicField name="*_i"  type="int"    indexed="true"  stored="true"/>
    <dynamicField name="*_s"  type="string"  indexed="true"  stored="true"/>
    <dynamicField name="*_l"  type="long"   indexed="true"  stored="true"/>
@@ -541,14 +543,18 @@
    <dynamicField name="*_b"  type="boolean" indexed="true"  stored="true"/>
    <dynamicField name="*_f"  type="float"  indexed="true"  stored="true"/>
    <dynamicField name="*_d"  type="double" indexed="true"  stored="true"/>
+   -->
 
    <!-- Type used to index the lat and lon components for the "location" FieldType -->
+   <!--
    <dynamicField name="*_coordinate"  type="tdouble" indexed="true"  stored="false"/>
 
    <dynamicField name="*_dt" type="date"    indexed="true"  stored="true"/>
    <dynamicField name="*_p"  type="location" indexed="true" stored="true"/>
+   -->
 
    <!-- some trie-coded dynamic fields for faster range queries -->
+   <!--
    <dynamicField name="*_ti" type="tint"    indexed="true"  stored="true"/>
    <dynamicField name="*_tl" type="tlong"   indexed="true"  stored="true"/>
    <dynamicField name="*_tf" type="tfloat"  indexed="true"  stored="true"/>
@@ -561,6 +567,7 @@
    <dynamicField name="attr_*" type="textgen" indexed="true" stored="true" multiValued="true"/>
 
    <dynamicField name="random_*" type="random" />
+   -->
 
    <!-- uncomment the following to ignore any fields that don't already match an existing 
         field name or dynamic field, rather than reporting them as an error. 
