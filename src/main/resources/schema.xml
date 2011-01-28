@@ -451,6 +451,7 @@
    <field name="tagname" type="string" indexed="true" stored="true" />
    <field name="taguuid" type="string" indexed="true" stored="true" multiValued="true" />
    <field name="tag" type="string" indexed="true" stored="true"  multiValued="true" />
+   <field name="linkpaths" type="string" indexed="true" stored="false" />
 
    <!-- sakai authorizables -->
    <field name="name" type="string" indexed="true" stored="true" />
