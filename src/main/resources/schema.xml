@@ -435,7 +435,7 @@
    <field name="someother" type="string" indexed="true" stored="true" multiValued="true" /> 
    <field name="sakai.group" type="string" indexed="true" stored="true" /> 
    <field name="content" type="text" indexed="true" stored="false" termVectors="true" termPositions="true" termOffsets="true" />
-   <field name="createdBy" type="date" indexed="true" stored="false" />
+   <field name="createdBy" type="string" indexed="true" stored="false" />
    <field name="created" type="long" indexed="true" stored="false" />
    <field name="lastModifiedBy" type="string" indexed="true" stored="false" /> 
    <field name="lastModified" type="long" indexed="true" stored="false" /> 
