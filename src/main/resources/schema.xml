@@ -460,6 +460,9 @@
    <field name="email" type="string" indexed="true" stored="true" />
    <field name="type" type="string" indexed="true" stored="true" />
 
+   <!-- sakai/activity -->
+   <field name="timestamp" type="long" indexed="true" stored="false" />
+
    <!--  general sakai -->   
    <dynamicField name="sakai*"  type="string"  indexed="true"  stored="true"/>
    
