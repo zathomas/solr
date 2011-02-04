@@ -23,7 +23,6 @@ import org.sakaiproject.nakamura.api.lite.accesscontrol.AccessControlManager;
 import org.sakaiproject.nakamura.api.lite.accesscontrol.AccessDeniedException;
 import org.sakaiproject.nakamura.api.lite.accesscontrol.Permissions;
 import org.sakaiproject.nakamura.api.lite.accesscontrol.Security;
-import org.sakaiproject.nakamura.api.lite.authorizable.Authorizable;
 import org.sakaiproject.nakamura.api.lite.content.Content;
 import org.sakaiproject.nakamura.api.lite.content.ContentManager;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
@@ -92,7 +91,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
       String path = (String) event.getProperty(FIELD_PATH);
       if (!ignore(path)) {
         LOGGER.debug("Update action at path:{}  require on {} ", path, event);
-        Collection<SolrInputDocument> docs = getHander(repositorySession, path)
+        Collection<SolrInputDocument> docs = getHandler(repositorySession, path)
             .getDocuments(repositorySession, event);
         List<SolrInputDocument> outputDocs = Lists.newArrayList();
         for (SolrInputDocument doc : docs) {
@@ -140,16 +139,6 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
         path = newPath;
       }
       doc.removeField(_DOC_SOURCE_OBJECT);
-    } else if ( o instanceof Authorizable ) {
-      Authorizable authorizable = (Authorizable) o;
-      String[] principals = getReadingPrincipals(repositorySession, Security.ZONE_AUTHORIZABLES, authorizable.getId());
-      for (String principal : principals) {
-        doc.addField(FIELD_READERS, principal);
-      }
-      doc.setField(FIELD_RESOURCE_TYPE, "authorizable");
-      doc.setField(FIELD_ID, authorizable.getId());
-      doc.removeField(_DOC_SOURCE_OBJECT);
-      
     } else {
       LOGGER.error("Note to Developer: Indexer must add the _source fields so that the default fields can be set, please correct, SolrDoc was {} ",doc);
       throw new StorageClientException(_DOC_SOURCE_OBJECT+" fields was missing from Solr Document, please correct the handler implementation");
@@ -165,7 +154,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     return accessControlManager.findPrincipals(zone, path,Permissions.CAN_READ.getPermission(), true);
   }
 
-  private IndexingHandler getHander(RepositorySession repositorySession, String path) {
+  private IndexingHandler getHandler(RepositorySession repositorySession, String path) {
     org.sakaiproject.nakamura.api.lite.Session sparseSession = repositorySession
         .adaptTo(org.sakaiproject.nakamura.api.lite.Session.class);
 
@@ -213,7 +202,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     if (topic.endsWith(StoreListener.DELETE_TOPIC) || topic.endsWith(StoreListener.UPDATED_TOPIC)) {
       String path = (String) event.getProperty(FIELD_PATH);
       if (!ignore(path)) {
-        return getHander(repositorySession, path).getDeleteQueries(repositorySession,
+        return getHandler(repositorySession, path).getDeleteQueries(repositorySession,
             event);
       }
     } else {

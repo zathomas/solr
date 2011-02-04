@@ -463,6 +463,9 @@
    <!-- sakai/activity -->
    <field name="timestamp" type="long" indexed="true" stored="false" />
 
+   <!-- sakai/contact -->
+   <field name="state" type="string" indexed="true" stored="false" />
+
    <!--  general sakai -->   
    <dynamicField name="sakai*"  type="string"  indexed="true"  stored="true"/>
    
