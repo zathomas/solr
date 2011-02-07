@@ -466,6 +466,12 @@
    <!-- sakai/contact -->
    <field name="state" type="string" indexed="true" stored="false" />
 
+   <!-- sakai/message -->
+   <field name="messagebox" type="string" indexed="true" stored="false" />
+   <field name="category" type="string" indexed="true" stored="false" />
+   <field name="from" type="string" indexed="true" stored="false" />
+   <field name="to" type="string" indexed="true" stored="false" />
+
    <!--  general sakai -->   
    <dynamicField name="sakai*"  type="string"  indexed="true"  stored="true"/>
    
