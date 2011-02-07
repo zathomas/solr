@@ -472,6 +472,14 @@
    <field name="from" type="string" indexed="true" stored="false" />
    <field name="to" type="string" indexed="true" stored="false" />
 
+   <!-- sakai/discussion -->
+   <field name="marker" type="string" indexed="true" stored="false" />
+   <field name="sendstate" type="string" indexed="true" stored="false" />
+   <field name="initialpost" type="string" indexed="true" stored="false" />
+
+   <!-- sakai/calendar -->
+   <field name="vcal-DTSTART" type="date" indexed="true" stored="false" />
+
    <!--  general sakai -->   
    <dynamicField name="sakai*"  type="string"  indexed="true"  stored="true"/>
    
