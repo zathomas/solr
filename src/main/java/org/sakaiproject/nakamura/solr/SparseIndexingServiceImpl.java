@@ -130,7 +130,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
         doc.addField(FIELD_READERS, principal);
       }
       if ( content.hasProperty("sling:resourceType")) {
-        doc.setField(FIELD_RESOURCE_TYPE, StorageClientUtils.toString(content.getProperty("sling:resourceType")));
+        doc.setField(FIELD_RESOURCE_TYPE, content.getProperty("sling:resourceType"));
       }
       String path = content.getPath();
       doc.setField(FIELD_ID, path);
@@ -171,7 +171,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
             LOGGER.debug("Checking Content at {} got {} ", path, c);
             if (c != null) {
               if (c.hasProperty("sling:resourceType")) {
-                String resourceType = StorageClientUtils.toString(c.getProperty("sling:resourceType"));
+                String resourceType = (String) c.getProperty("sling:resourceType");
                 IndexingHandler handler = indexers.get(resourceType);
                 if (handler != null) {
                   LOGGER.debug("Handler of type {} found {} for {} from {} ", new Object[] {

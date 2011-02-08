@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.solr.client.solrj.util.ClientUtils;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.schema.DateField;
 import org.osgi.service.event.Event;
@@ -21,7 +22,6 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.jcr.Node;
-import javax.jcr.PathNotFoundException;
 import javax.jcr.Property;
 import javax.jcr.PropertyIterator;
 import javax.jcr.PropertyType;
@@ -86,7 +86,7 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
           LOGGER.debug("Added {} ", nadd);
           doc.setField(_DOC_SOURCE_OBJECT, n);
           documents.add(doc);
-          
+
         }
       } catch (RepositoryException e) {
         LOGGER.error(e.getMessage(), e);
@@ -94,7 +94,7 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
     }
     return documents;
   }
-  
+
 
   public Collection<String> getDeleteQueries(RepositorySession repositorySession, Event event) {
     LOGGER.debug("GetDelete for {} ", event);
@@ -103,18 +103,18 @@ public class DefaultResourceTypeHandler implements IndexingHandler {
     if ( ignore ) {
       return Collections.emptyList();
     } else {
-      return ImmutableList.of("id:" + path);
+      return ImmutableList.of("id:" + ClientUtils.escapeQueryChars(path));
     }
   }
 
   protected boolean ignorePath(String path) {
     if (path != null) {
-      if ( path.contains("/rep:policy") ) {  
+      if ( path.contains("/rep:policy") ) {
         return true;
       } else if ( path.contains("/jcr:content")) {
         return true;
       } else if ( path.startsWith("/jcr:system")) {
-        return true;     
+        return true;
       }
     } else {
       return true;
