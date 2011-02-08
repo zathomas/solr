@@ -60,7 +60,6 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   @Property(intValue = 200)
   static final String BATCHED_INDEX_SIZE = "batched-index-size";
 
-
   @Property(value = { "org/sakaiproject/nakamura/lite/*",
       "org/apache/sling/api/resource/Resource/*" }, propertyPrivate = true)
   static final String TOPICS = EventConstants.EVENT_TOPIC;
@@ -121,6 +120,14 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   private int savedLineNo;
 
+  
+  /**
+   * A protective lock surrounding adding and removing keys from the handlers map. THis is
+   * there because we could have 2 threads adding to the same key at the same time. Its
+   * not there to protect the map itself or access to iterators on the objects in the map
+   * as those changes are still atomic. see usage for detail.
+   */
+  private Object handlersLock = new Object();
 
   @Activate
   protected void activate(Map<String, Object> properties) throws RepositoryException,
@@ -268,8 +275,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
         Event loadEvent = null;
         try {
           loadEvent = readEvent(5000L);
-        } catch ( Throwable t) {
-          LOGGER.warn("Unreadble Event at {} {} ",currentInFile, lineNo);
+        } catch (Throwable t) {
+          LOGGER.warn("Unreadble Event at {} {} ", currentInFile, lineNo);
         }
         Map<String, Event> events = Maps.newLinkedHashMap();
         while (loadEvent != null) {
@@ -292,12 +299,13 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           loadEvent = null;
           try {
             loadEvent = readEvent(5000L);
-          } catch ( Throwable t) {
-            LOGGER.warn("Unreadble Event at {} {} ",currentInFile, lineNo);
+          } catch (Throwable t) {
+            LOGGER.warn("Unreadble Event at {} {} ", currentInFile, lineNo);
           }
         }
-        if ( events.size() > 0 ) {
-          LOGGER.info("Processing a batch of {} items, redolog at {}:{}", new Object[]{events.size(),currentInFile,lineNo});
+        if (events.size() > 0) {
+          LOGGER.info("Processing a batch of {} items, redolog at {}:{}", new Object[] {
+              events.size(), currentInFile, lineNo });
         }
         SolrServer service = solrServerService.getServer();
         try {
@@ -337,12 +345,15 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
             }
           }
           if (needsCommit) {
-            LOGGER.info("Processed {} events in a batch, max {} ", events.size(), batchedIndexSize);
-            service.commit(false,false);
+            LOGGER.info("Processed {} events in a batch, max {} ", events.size(),
+                batchedIndexSize);
+            service.commit(false, false);
           }
           commit();
         } catch (SolrServerException e) {
-          LOGGER.warn(" Batch Operation completed with Errors, the index may have lost data, please FIX ASAP. "+e.getMessage(), e);
+          LOGGER.warn(
+              " Batch Operation completed with Errors, the index may have lost data, please FIX ASAP. "
+                  + e.getMessage(), e);
           try {
             service.rollback();
           } catch (Exception e1) {
@@ -371,12 +382,11 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     }
   }
 
-
   private Event readEvent(long timeout) throws IOException {
     String line = nextEvent(timeout);
     if (line != null) {
       String[] parts = StringUtils.split(line, ',');
-      if ( parts.length > 0 ) {
+      if (parts.length > 0) {
         Dictionary<String, Object> dict = new Hashtable<String, Object>();
         for (int i = 1; i < parts.length; i += 2) {
           dict.put(URLDecoder.decode(parts[i], "UTF8"),
@@ -410,7 +420,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
             LOGGER.info("Event Redo Log has processed {} events", nread);
           }
         } else {
-          // if we get null from a buffered reader that means end of file, but there was no end statement
+          // if we get null from a buffered reader that means end of file, but there was
+          // no end statement
           // so we need to check if this really is the end of file
           if (timeout > 0) {
             if (possibleEnd == 0) {
@@ -422,28 +433,29 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
               waitForWriter(timeout);
               possibleEnd = 2;
             } else if (possibleEnd == 2) {
-              //we waited, we reloaded and its still not giving more, all I can assume is the file got closed without a new one, so go for the next reader
+              // we waited, we reloaded and its still not giving more, all I can assume is
+              // the file got closed without a new one, so go for the next reader
               LOGGER.debug("Searching for next file, currently {}", currentInFile);
               // one of 2 things can happen here.
               // the file gets appended to or a new file appears.
               List<File> files = Lists.newArrayList(logDirectory.listFiles());
-              if (deleteQueue != null ) {
+              if (deleteQueue != null) {
                 files.removeAll(deleteQueue);
               }
               File nextFile = null;
 
-              for (File f : files ) {
-                if ( f.lastModified() > loadedAt ) {
-                    if ( nextFile == null ) {
-                      nextFile = f;
-                    } else if ( f.lastModified() < nextFile.lastModified() ) {
-                      nextFile = f;
-                    }
+              for (File f : files) {
+                if (f.lastModified() > loadedAt) {
+                  if (nextFile == null) {
+                    nextFile = f;
+                  } else if (f.lastModified() < nextFile.lastModified()) {
+                    nextFile = f;
+                  }
                 }
               }
-              if ( nextFile == null ) {
+              if (nextFile == null) {
                 return null;
-              } else if ( nextFile.equals(currentInFile) ) {
+              } else if (nextFile.equals(currentInFile)) {
                 waitForWriter(timeout);
                 possibleEnd = 4; // try once more
               } else {
@@ -451,7 +463,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
                 nextReader(timeout);
                 possibleEnd = 4;
               }
-            } else if ( possibleEnd == 4) {
+            } else if (possibleEnd == 4) {
               // no more events, flush and start next loop
               return null;
             } else {
@@ -482,12 +494,13 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     if (deleteQueue != null) {
       for (File f : deleteQueue) {
         LOGGER.info("Deleting Reader File {} ", f);
-        if ( !f.delete() ) {
-          LOGGER.debug("Failed to delete Redo file, {} might be an issue",f);
+        if (!f.delete()) {
+          LOGGER.debug("Failed to delete Redo file, {} might be an issue", f);
         }
       }
-      if ( !positionFile.delete() ) {
-        LOGGER.debug("Failed to delete Possition file, {} might be an issue",positionFile);
+      if (!positionFile.delete()) {
+        LOGGER.debug("Failed to delete Possition file, {} might be an issue",
+            positionFile);
       }
       deleteQueue.clear();
       deleteQueue = null;
@@ -505,8 +518,9 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   private void savePosition() throws IOException {
     if (currentInFile == null) {
-      if ( !positionFile.delete() ) {
-        LOGGER.debug("Failed to delete Possition file, {} might be an issue",positionFile);
+      if (!positionFile.delete()) {
+        LOGGER.debug("Failed to delete Possition file, {} might be an issue",
+            positionFile);
       }
     } else {
       FileWriter position = new FileWriter(positionFile);
@@ -535,7 +549,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
       } finally {
         try {
           position.close();
-        } catch ( IOException e) {
+        } catch (IOException e) {
           LOGGER.debug("Failed to close {} ", positionFile);
         }
       }
@@ -555,7 +569,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
         eventReader.readLine();
       }
     }
- }
+  }
 
   private boolean checkReaderOpen(long timeout) throws IOException {
     while (currentInFile == null) {
@@ -570,8 +584,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
         files.removeAll(deleteQueue);
       }
       if (files.size() > 0) {
-        if ( files.size() > 1 ) {
-          LOGGER.info("Reader currently {} MB behind ", files.size()-1);
+        if (files.size() > 1) {
+          LOGGER.info("Reader currently {} MB behind ", files.size() - 1);
         }
         currentInFile = files.get(0);
         if (eventReader != null) {
@@ -604,17 +618,19 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     if (currentInFile != null) {
       if (deleteQueue != null) {
         deleteQueue.add(currentInFile);
-        if ( !positionFile.delete() ) {
-          LOGGER.debug("Failed to delete Position file, {} might be an issue",positionFile);
+        if (!positionFile.delete()) {
+          LOGGER.debug("Failed to delete Position file, {} might be an issue",
+              positionFile);
         }
         currentInFile = null;
       } else {
         LOGGER.info("Deleting Reader File {} ", currentInFile);
-        if (!currentInFile.delete() ) {
-          LOGGER.debug("Failed to delete Redo file, {} might be an issue",currentInFile);
+        if (!currentInFile.delete()) {
+          LOGGER.debug("Failed to delete Redo file, {} might be an issue", currentInFile);
         }
-        if ( !positionFile.delete() ) {
-          LOGGER.debug("Failed to delete Position file, {} might be an issue",positionFile);
+        if (!positionFile.delete()) {
+          LOGGER.debug("Failed to delete Position file, {} might be an issue",
+              positionFile);
         }
         currentInFile = null;
       }
@@ -626,16 +642,20 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     if (running) {
       // just incase we have to wait for a while for the lock, get the last modified now,
       // so we can see if its modified since we started waiting.
-      if ( timeout > 0 ) {
+      if (timeout > 0) {
         synchronized (waitingForFileLock) {
           try {
             LOGGER.debug("Waiting for more data read:{} written:{} ", nread, nwrite);
             if (nread > nwrite) {
               // reset counters if were catching up
               nread = nwrite;
-              // +1 because an event was written which makes nwrite nread+1 when there are none left
-            } else if ( nread+1 < nwrite ) {
-              LOGGER.debug("Possible event loss, waiting to read when there are more events written read:{} written:{}",nread,nwrite);
+              // +1 because an event was written which makes nwrite nread+1 when there are
+              // none left
+            } else if (nread + 1 < nwrite) {
+              LOGGER
+                  .debug(
+                      "Possible event loss, waiting to read when there are more events written read:{} written:{}",
+                      nread, nwrite);
             }
             waitingForFileLock.wait(timeout);
           } catch (InterruptedException e) {
@@ -649,19 +669,27 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   }
 
   public void addHandler(String topic, IndexingHandler handler) {
-    Collection<IndexingHandler> topicHandlers = handlers.get(topic);
-    if (topicHandlers == null) {
-      topicHandlers = Sets.newHashSet();
+    synchronized(handlersLock) {
+      Collection<IndexingHandler> topicHandlers = handlers.get(topic);
+      if (topicHandlers == null) {
+        topicHandlers = Sets.newHashSet();
+      } else {
+        // make a copy to avoid concurrency issues in the topicHandler
+        topicHandlers = Sets.newHashSet(topicHandlers);
+      }
+      topicHandlers.add(handler);
+      handlers.put(topic, topicHandlers);
     }
-    topicHandlers.add(handler);
-    handlers.put(topic, topicHandlers);
   }
 
   public void removeHandler(String topic, IndexingHandler handler) {
-    Collection<IndexingHandler> topicHandlers = handlers.get(topic);
-    if (topicHandlers != null && topicHandlers.size() > 0) {
-      topicHandlers.remove(handler);
-      handlers.put(topic, topicHandlers);
+    synchronized(handlersLock) {
+      Collection<IndexingHandler> topicHandlers = handlers.get(topic);
+      if (topicHandlers != null && topicHandlers.size() > 0) {
+        topicHandlers = Sets.newHashSet(topicHandlers);
+        topicHandlers.remove(handler);
+        handlers.put(topic, topicHandlers);
+      }
     }
   }
 
