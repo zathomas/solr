@@ -454,15 +454,15 @@
    <field name="linkpaths" type="string" indexed="true" stored="false" />
 
    <!-- sakai users -->
-   <field name="name" type="string" indexed="true" stored="true" />
-   <field name="firstName" type="string" indexed="true" stored="true" />
-   <field name="lastName" type="string" indexed="true" stored="true" />
-   <field name="email" type="string" indexed="true" stored="true" />
+   <field name="name" type="lowercase" indexed="true" stored="true" />
+   <field name="firstName" type="lowercase" indexed="true" stored="true" />
+   <field name="lastName" type="lowercase" indexed="true" stored="true" />
+   <field name="email" type="lowercase" indexed="true" stored="true" />
    <field name="type" type="string" indexed="true" stored="true" />
 
    <!-- sakai groups -->
-   <field name="title" type="string" indexed="true" stored="true" />
-   <field name="description" type="string" indexed="true" stored="true" />
+   <field name="title" type="lowercase" indexed="true" stored="true" />
+   <field name="description" type="lowercase" indexed="true" stored="true" />
 
    <!-- sakai/activity -->
    <field name="timestamp" type="long" indexed="true" stored="false" />
