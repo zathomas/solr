@@ -316,30 +316,35 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
             Collection<IndexingHandler> contentIndexHandlers = handlers.get(topic);
             if (contentIndexHandlers != null) {
               for (IndexingHandler contentIndexHandler : contentIndexHandlers) {
-                LOGGER.debug("Got Handler {} for event {} {}", new Object[] {
-                    contentIndexHandler, event, event.getProperty("path") });
-
-                for (String deleteQuery : contentIndexHandler.getDeleteQueries(
-                    repositorySession, event)) {
-                  if (service != null) {
-                    LOGGER.debug("Added delete Query {} ", deleteQuery);
-                    try {
-                      service.deleteByQuery(deleteQuery);
-                      needsCommit = true;
-                    } catch (SolrServerException e) {
-                      LOGGER.info(" Failed to delete {}  cause :{}", deleteQuery,
-                          e.getMessage());
+                try {
+                  LOGGER.debug("Got Handler {} for event {} {}", new Object[] {
+                      contentIndexHandler, event, event.getProperty("path") });
+  
+                  for (String deleteQuery : contentIndexHandler.getDeleteQueries(
+                      repositorySession, event)) {
+                    if (service != null) {
+                      LOGGER.debug("Added delete Query {} ", deleteQuery);
+                      try {
+                        service.deleteByQuery(deleteQuery);
+                        needsCommit = true;
+                      } catch (SolrServerException e) {
+                        LOGGER.info(" Failed to delete {}  cause :{}", deleteQuery,
+                            e.getMessage());
+                      }
                     }
                   }
-                }
-                Collection<SolrInputDocument> docs = contentIndexHandler.getDocuments(
-                    repositorySession, event);
-                if (service != null) {
-                  if (docs != null && docs.size() > 0) {
-                    LOGGER.debug("Adding Docs {} ", docs);
-                    service.add(docs);
-                    needsCommit = true;
+                  Collection<SolrInputDocument> docs = contentIndexHandler.getDocuments(
+                      repositorySession, event);
+                  if (service != null) {
+                    if (docs != null && docs.size() > 0) {
+                      LOGGER.debug("Adding Docs {} ", docs);
+                      service.add(docs);
+                      needsCommit = true;
+                    }
                   }
+                } catch ( Throwable t ) {
+                  LOGGER.error("{} Failed to process event {}, cause follows, event ignored for this processor, please fix issue to remove this message (dont delete this log message from the code) ",contentIndexHandler, event);
+                  LOGGER.error(t.getMessage(),t);
                 }
               }
             }
