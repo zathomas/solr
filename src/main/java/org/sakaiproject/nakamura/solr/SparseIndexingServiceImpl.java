@@ -14,6 +14,7 @@ import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.solr.common.SolrInputDocument;
+import org.apache.solr.common.SolrInputField;
 import org.osgi.service.event.Event;
 import org.sakaiproject.nakamura.api.lite.Session;
 import org.sakaiproject.nakamura.api.lite.StorageClientException;
@@ -36,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 @Component(immediate = true, metatype = true)
@@ -95,16 +97,17 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
             .getDocuments(repositorySession, event);
         List<SolrInputDocument> outputDocs = Lists.newArrayList();
         for (SolrInputDocument doc : docs) {
-          for (String name : doc.getFieldNames()) {
-            if (!SYSTEM_PROPERTIES.contains(name)) {
-              try {
-                addDefaultFields(doc, repositorySession);
-                outputDocs.add(doc);
-              } catch (StorageClientException e) {
-                LOGGER.warn("Failed to index {} cause: {} ",path,e.getMessage());
-              }
-              break;
+          SolrInputDocument safeDoc = new SolrInputDocument();
+          for (Entry<String, SolrInputField> field : doc.entrySet()) {
+            if (!SYSTEM_PROPERTIES.contains(field.getKey())) {
+              safeDoc.put(field.getKey(), field.getValue());
             }
+          }
+          try {
+            addDefaultFields(safeDoc, repositorySession);
+            outputDocs.add(safeDoc);
+          } catch (StorageClientException e) {
+            LOGGER.warn("Failed to index {} cause: {} ", path, e.getMessage());
           }
         }
         return outputDocs;

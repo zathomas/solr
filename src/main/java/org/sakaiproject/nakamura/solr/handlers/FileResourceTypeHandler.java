@@ -19,15 +19,15 @@ import javax.jcr.Property;
 import javax.jcr.PropertyIterator;
 import javax.jcr.RepositoryException;
 
-@Component
+@Component(immediate = true)
 public class FileResourceTypeHandler extends DefaultResourceTypeHandler {
 
   private static final Logger LOGGER = LoggerFactory
       .getLogger(FileResourceTypeHandler.class);
   @Reference(target="(type=jcr)")
   protected ResourceIndexingService resourceIndexingService;
-  
-  
+
+
 
   @Activate
   public void activate(Map<String, Object> properties) {
@@ -42,6 +42,7 @@ public class FileResourceTypeHandler extends DefaultResourceTypeHandler {
     setResourceIndexingService(null);
   }
 
+  @Override
   public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession, Event event) {
     Collection<SolrInputDocument> docs = super.getDocuments(repositorySession, event);
     for (SolrInputDocument d : docs) {
@@ -76,6 +77,7 @@ public class FileResourceTypeHandler extends DefaultResourceTypeHandler {
     return docs;
   }
 
+  @Override
   public Collection<String> getDeleteQueries(RepositorySession repositorySession, Event event) {
     return super.getDeleteQueries(repositorySession, event);
   }

@@ -453,12 +453,16 @@
    <field name="tag" type="string" indexed="true" stored="true"  multiValued="true" />
    <field name="linkpaths" type="string" indexed="true" stored="false" />
 
-   <!-- sakai authorizables -->
+   <!-- sakai users -->
    <field name="name" type="string" indexed="true" stored="true" />
    <field name="firstName" type="string" indexed="true" stored="true" />
    <field name="lastName" type="string" indexed="true" stored="true" />
    <field name="email" type="string" indexed="true" stored="true" />
    <field name="type" type="string" indexed="true" stored="true" />
+
+   <!-- sakai groups -->
+   <field name="title" type="string" indexed="true" stored="true" />
+   <field name="description" type="string" indexed="true" stored="true" />
 
    <!-- sakai/activity -->
    <field name="timestamp" type="long" indexed="true" stored="false" />

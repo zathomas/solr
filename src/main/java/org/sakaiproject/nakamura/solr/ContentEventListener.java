@@ -59,7 +59,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   @Property(intValue = 200)
   static final String BATCHED_INDEX_SIZE = "batched-index-size";
-  
+
 
   @Property(value = { "org/sakaiproject/nakamura/lite/*",
       "org/apache/sling/api/resource/Resource/*" }, propertyPrivate = true)
@@ -81,7 +81,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   @Reference
   protected Repository sparseRepository;
 
-  private Map<String, IndexingHandler> handlers = Maps.newConcurrentHashMap();
+  private Map<String, Collection<IndexingHandler>> handlers = Maps.newConcurrentHashMap();
 
   private Session session;
 
@@ -207,8 +207,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   public void handleEvent(Event event) {
     String topic = event.getTopic();
     LOGGER.debug("Got Event {} {} ", event, handlers);
-    IndexingHandler contentIndexHandler = handlers.get(topic);
-    if (contentIndexHandler != null) {
+    Collection<IndexingHandler> contentIndexHandler = handlers.get(topic);
+    if (contentIndexHandler != null && contentIndexHandler.size() > 0) {
       try {
         saveEvent(event);
       } catch (IOException e) {
@@ -266,7 +266,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
       try {
         begin();
         Event loadEvent = null;
-        try { 
+        try {
           loadEvent = readEvent(5000L);
         } catch ( Throwable t) {
           LOGGER.warn("Unreadble Event at {} {} ",currentInFile, lineNo);
@@ -276,8 +276,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           String topic = loadEvent.getTopic();
           String path = (String) loadEvent.getProperty("path");
           if (path != null) {
-            IndexingHandler contentIndexHandler = handlers.get(topic);
-            if (contentIndexHandler != null) {
+            Collection<IndexingHandler> contentIndexHandler = handlers.get(topic);
+            if (contentIndexHandler != null && contentIndexHandler.size() > 0) {
               if (events.containsKey(path)) {
                 // events is a linked hash map this will put it at the end.
                 events.remove(path);
@@ -288,12 +288,12 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           if (events.size() >= batchedIndexSize) {
             break;
           }
-          
+
           loadEvent = null;
           try {
             loadEvent = readEvent(5000L);
           } catch ( Throwable t) {
-            LOGGER.warn("Unreadble Event at {} {} ",currentInFile, lineNo);            
+            LOGGER.warn("Unreadble Event at {} {} ",currentInFile, lineNo);
           }
         }
         if ( events.size() > 0 ) {
@@ -305,30 +305,32 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           for (Entry<String, Event> ev : events.entrySet()) {
             Event event = ev.getValue();
             String topic = event.getTopic();
-            IndexingHandler contentIndexHandler = handlers.get(topic);
-            LOGGER.debug("Got Handler {} for event {} {}", new Object[] {
-                contentIndexHandler, event, event.getProperty("path") });
-            if (contentIndexHandler != null) {
-              for (String deleteQuery : contentIndexHandler.getDeleteQueries(
-                  repositorySession, event)) {
-                if (service != null) {
-                  LOGGER.debug("Added delete Query {} ", deleteQuery);
-                  try {
-                    service.deleteByQuery(deleteQuery);
-                    needsCommit = true;
-                  } catch (SolrServerException e) {
-                    LOGGER.info(" Failed to delete {}  cause :{}", deleteQuery,
-                        e.getMessage());
+            Collection<IndexingHandler> contentIndexHandlers = handlers.get(topic);
+            for (IndexingHandler contentIndexHandler : contentIndexHandlers) {
+              LOGGER.debug("Got Handler {} for event {} {}", new Object[] {
+                  contentIndexHandler, event, event.getProperty("path") });
+              if (contentIndexHandler != null) {
+                for (String deleteQuery : contentIndexHandler.getDeleteQueries(
+                    repositorySession, event)) {
+                  if (service != null) {
+                    LOGGER.debug("Added delete Query {} ", deleteQuery);
+                    try {
+                      service.deleteByQuery(deleteQuery);
+                      needsCommit = true;
+                    } catch (SolrServerException e) {
+                      LOGGER.info(" Failed to delete {}  cause :{}", deleteQuery,
+                          e.getMessage());
+                    }
                   }
                 }
-              }
-              Collection<SolrInputDocument> docs = contentIndexHandler.getDocuments(
-                  repositorySession, event);
-              if (service != null) {
-                if (docs != null && docs.size() > 0) {
-                  LOGGER.debug("Adding Docs {} ", docs);
-                  service.add(docs);
-                  needsCommit = true;
+                Collection<SolrInputDocument> docs = contentIndexHandler.getDocuments(
+                    repositorySession, event);
+                if (service != null) {
+                  if (docs != null && docs.size() > 0) {
+                    LOGGER.debug("Adding Docs {} ", docs);
+                    service.add(docs);
+                    needsCommit = true;
+                  }
                 }
               }
             }
@@ -428,7 +430,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
                 files.removeAll(deleteQueue);
               }
               File nextFile = null;
-              
+
               for (File f : files ) {
                 if ( f.lastModified() > loadedAt ) {
                     if ( nextFile == null ) {
@@ -442,7 +444,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
                 return null;
               } else if ( nextFile.equals(currentInFile) ) {
                 waitForWriter(timeout);
-                possibleEnd = 4; // try once more 
+                possibleEnd = 4; // try once more
               } else {
                 // a new file, try and open that
                 nextReader(timeout);
@@ -480,7 +482,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
       for (File f : deleteQueue) {
         LOGGER.info("Deleting Reader File {} ", f);
         if ( !f.delete() ) {
-          LOGGER.debug("Failed to delete Redo file, {} might be an issue",f);          
+          LOGGER.debug("Failed to delete Redo file, {} might be an issue",f);
         }
       }
       if ( !positionFile.delete() ) {
@@ -646,12 +648,19 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   }
 
   public void addHandler(String topic, IndexingHandler handler) {
-    handlers.put(topic, handler);
+    Collection<IndexingHandler> topicHandlers = handlers.get(topic);
+    if (topicHandlers == null) {
+      topicHandlers = Sets.newHashSet();
+    }
+    topicHandlers.add(handler);
+    handlers.put(topic, topicHandlers);
   }
 
   public void removeHandler(String topic, IndexingHandler handler) {
-    if (handler.equals(handlers.get(topic))) {
-      handlers.remove(topic);
+    Collection<IndexingHandler> topicHandlers = handlers.get(topic);
+    if (topicHandlers != null && topicHandlers.size() > 0) {
+      topicHandlers.remove(handler);
+      handlers.put(topic, topicHandlers);
     }
   }
 
