@@ -306,10 +306,11 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
             Event event = ev.getValue();
             String topic = event.getTopic();
             Collection<IndexingHandler> contentIndexHandlers = handlers.get(topic);
-            for (IndexingHandler contentIndexHandler : contentIndexHandlers) {
-              LOGGER.debug("Got Handler {} for event {} {}", new Object[] {
-                  contentIndexHandler, event, event.getProperty("path") });
-              if (contentIndexHandler != null) {
+            if (contentIndexHandlers != null) {
+              for (IndexingHandler contentIndexHandler : contentIndexHandlers) {
+                LOGGER.debug("Got Handler {} for event {} {}", new Object[] {
+                    contentIndexHandler, event, event.getProperty("path") });
+
                 for (String deleteQuery : contentIndexHandler.getDeleteQueries(
                     repositorySession, event)) {
                   if (service != null) {
