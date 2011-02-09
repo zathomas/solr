@@ -59,6 +59,9 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   @Property(intValue = 200)
   static final String BATCHED_INDEX_SIZE = "batched-index-size";
+  
+  @Property(longValue = 5000)
+  static final String BATCH_DELAY = "batch-delay";
 
   @Property(value = { "org/sakaiproject/nakamura/lite/*",
       "org/apache/sling/api/resource/Resource/*" }, propertyPrivate = true)
@@ -70,6 +73,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   private static final String END = "--end--";
 
   private static final Integer DEFAULT_BATCHED_INDEX_SIZE = 100;
+  
+  private static final Long DEFAULT_BATCH_DELAY = 5000L;
 
   @Reference
   protected SolrServerService solrServerService;
@@ -113,6 +118,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   private RepositorySession repositorySession;
 
   protected int batchedIndexSize;
+  
+  protected long batchDelay;
 
   private Set<File> deleteQueue;
 
@@ -136,6 +143,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     sparseSession = sparseRepository.loginAdministrative();
     batchedIndexSize = StorageClientUtils.getSetting(properties.get(BATCHED_INDEX_SIZE),
         DEFAULT_BATCHED_INDEX_SIZE);
+    
+    batchDelay = StorageClientUtils.getSetting(properties.get(BATCH_DELAY), DEFAULT_BATCH_DELAY);
 
     repositorySession = new RepositorySession() {
 
@@ -274,7 +283,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
         begin();
         Event loadEvent = null;
         try {
-          loadEvent = readEvent(5000L);
+          loadEvent = readEvent(batchDelay);
         } catch (Throwable t) {
           LOGGER.warn("Unreadble Event at {} {} ", currentInFile, lineNo);
         }
@@ -298,7 +307,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
           loadEvent = null;
           try {
-            loadEvent = readEvent(5000L);
+            loadEvent = readEvent(batchDelay);
           } catch (Throwable t) {
             LOGGER.warn("Unreadble Event at {} {} ", currentInFile, lineNo);
           }
