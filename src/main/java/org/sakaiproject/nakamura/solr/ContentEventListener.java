@@ -136,6 +136,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
    */
   private Object handlersLock = new Object();
 
+  private long batchStart;
+
   @Activate
   protected void activate(Map<String, Object> properties) throws RepositoryException,
       IOException, ClientPoolException, StorageClientException, AccessDeniedException {
@@ -283,7 +285,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
         begin();
         Event loadEvent = null;
         try {
-          loadEvent = readEvent(batchDelay);
+          loadEvent = readEvent(getBatchDelay());
         } catch (Throwable t) {
           LOGGER.warn("Unreadble Event at {} {} ", currentInFile, lineNo);
         }
@@ -307,7 +309,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
           loadEvent = null;
           try {
-            loadEvent = readEvent(batchDelay);
+            loadEvent = readEvent(getBatchDelay());
           } catch (Throwable t) {
             LOGGER.warn("Unreadble Event at {} {} ", currentInFile, lineNo);
           }
@@ -396,17 +398,23 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     }
   }
 
+  private long getBatchDelay() {
+    return batchDelay-(System.currentTimeMillis()-batchStart);
+  }
+
   private Event readEvent(long timeout) throws IOException {
-    String line = nextEvent(timeout);
-    if (line != null) {
-      String[] parts = StringUtils.split(line, ',');
-      if (parts.length > 0) {
-        Dictionary<String, Object> dict = new Hashtable<String, Object>();
-        for (int i = 1; i < parts.length; i += 2) {
-          dict.put(URLDecoder.decode(parts[i], "UTF8"),
-              URLDecoder.decode(parts[i + 1], "UTF8"));
+    if ( timeout > 0 ){
+      String line = nextEvent(timeout);
+      if (line != null) {
+        String[] parts = StringUtils.split(line, ',');
+        if (parts.length > 0) {
+          Dictionary<String, Object> dict = new Hashtable<String, Object>();
+          for (int i = 1; i < parts.length; i += 2) {
+            dict.put(URLDecoder.decode(parts[i], "UTF8"),
+                URLDecoder.decode(parts[i + 1], "UTF8"));
+          }
+          return new Event(URLDecoder.decode(parts[0], "UTF8"), dict);
         }
-        return new Event(URLDecoder.decode(parts[0], "UTF8"), dict);
       }
     }
     return null;
@@ -528,6 +536,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     savedCurrentInFile = currentInFile;
     savedLineNo = lineNo;
     deleteQueue = Sets.newHashSet();
+    batchStart = System.currentTimeMillis();
   }
 
   private void savePosition() throws IOException {
