@@ -361,8 +361,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
             }
           }
           if (needsCommit) {
-            LOGGER.info("Processed {} events in a batch, max {} ", events.size(),
-                batchedIndexSize);
+            LOGGER.info("Processed {} events in a batch, max {}, TTL {} ", new Object[]{ events.size(),
+                batchedIndexSize, getBatchTTL()});
             service.commit(false, false);
           }
           commit();
