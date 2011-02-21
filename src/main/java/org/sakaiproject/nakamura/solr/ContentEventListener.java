@@ -136,6 +136,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
    */
   private Object handlersLock = new Object();
 
+  private long batchStart;
+
   @Activate
   protected void activate(Map<String, Object> properties) throws RepositoryException,
       IOException, ClientPoolException, StorageClientException, AccessDeniedException {
@@ -283,7 +285,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
         begin();
         Event loadEvent = null;
         try {
-          loadEvent = readEvent(batchDelay);
+          loadEvent = readEvent();
         } catch (Throwable t) {
           LOGGER.warn("Unreadble Event at {} {} ", currentInFile, lineNo);
         }
@@ -307,14 +309,14 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
           loadEvent = null;
           try {
-            loadEvent = readEvent(batchDelay);
+            loadEvent = readEvent();
           } catch (Throwable t) {
             LOGGER.warn("Unreadble Event at {} {} ", currentInFile, lineNo);
           }
         }
         if (events.size() > 0) {
-          LOGGER.info("Processing a batch of {} items, redolog at {}:{}", new Object[] {
-              events.size(), currentInFile, lineNo });
+          LOGGER.info("Processing a batch of {} items, redolog at {}:{}, time remaining for this batch {}", new Object[] {
+              events.size(), currentInFile, lineNo, getBatchTTL() });
         }
         SolrServer service = solrServerService.getServer();
         try {
@@ -359,8 +361,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
             }
           }
           if (needsCommit) {
-            LOGGER.info("Processed {} events in a batch, max {} ", events.size(),
-                batchedIndexSize);
+            LOGGER.info("Processed {} events in a batch, max {}, TTL {} ", new Object[]{ events.size(),
+                batchedIndexSize, getBatchTTL()});
             service.commit(false, false);
           }
           commit();
@@ -396,31 +398,37 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     }
   }
 
-  private Event readEvent(long timeout) throws IOException {
-    String line = nextEvent(timeout);
-    if (line != null) {
-      String[] parts = StringUtils.split(line, ',');
-      if (parts.length > 0) {
-        Dictionary<String, Object> dict = new Hashtable<String, Object>();
-        for (int i = 1; i < parts.length; i += 2) {
-          dict.put(URLDecoder.decode(parts[i], "UTF8"),
-              URLDecoder.decode(parts[i + 1], "UTF8"));
+  private long getBatchTTL() {
+    return batchDelay-(System.currentTimeMillis()-batchStart);
+  }
+
+  private Event readEvent() throws IOException {
+    if ( getBatchTTL() > 0 ){
+      String line = nextEvent();
+      if (line != null) {
+        String[] parts = StringUtils.split(line, ',');
+        if (parts.length > 0) {
+          Dictionary<String, Object> dict = new Hashtable<String, Object>();
+          for (int i = 1; i < parts.length; i += 2) {
+            dict.put(URLDecoder.decode(parts[i], "UTF8"),
+                URLDecoder.decode(parts[i + 1], "UTF8"));
+          }
+          return new Event(URLDecoder.decode(parts[0], "UTF8"), dict);
         }
-        return new Event(URLDecoder.decode(parts[0], "UTF8"), dict);
       }
     }
     return null;
   }
 
-  private String nextEvent(long timeout) throws IOException {
+  private String nextEvent() throws IOException {
     String line = null;
     int possibleEnd = 0;
     long loadedAt = 0;
-    if (checkReaderOpen(timeout)) {
+    if (checkReaderOpen()) {
       while (line == null || END.equals(line)) {
         if (END.equals(line)) {
           LOGGER.debug("At End of file {}", currentInFile);
-          if (!nextReader(timeout)) {
+          if (!nextReader()) {
             return null;
           }
         }
@@ -437,14 +445,14 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           // if we get null from a buffered reader that means end of file, but there was
           // no end statement
           // so we need to check if this really is the end of file
-          if (timeout > 0) {
+          if (getBatchTTL() > 0) {
             if (possibleEnd == 0) {
               // even though the writer wrote something, we still couldnt read
-              waitForWriter(timeout);
+              waitForWriter();
               possibleEnd = 1;
             } else if (possibleEnd == 1) {
               // even though the writer wrote something, we still couldnt read
-              waitForWriter(timeout);
+              waitForWriter();
               possibleEnd = 2;
             } else if (possibleEnd == 2) {
               // we waited, we reloaded and its still not giving more, all I can assume is
@@ -470,18 +478,18 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
               if (nextFile == null) {
                 return null;
               } else if (nextFile.equals(currentInFile)) {
-                waitForWriter(timeout);
+                waitForWriter();
                 possibleEnd = 4; // try once more
               } else {
                 // a new file, try and open that
-                nextReader(timeout);
+                nextReader();
                 possibleEnd = 4;
               }
             } else if (possibleEnd == 4) {
               // no more events, flush and start next loop
               return null;
             } else {
-              waitForWriter(timeout);
+              waitForWriter();
               return null;
             }
           } else {
@@ -528,6 +536,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     savedCurrentInFile = currentInFile;
     savedLineNo = lineNo;
     deleteQueue = Sets.newHashSet();
+    batchStart = System.currentTimeMillis();
   }
 
   private void savePosition() throws IOException {
@@ -585,7 +594,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     }
   }
 
-  private boolean checkReaderOpen(long timeout) throws IOException {
+  private boolean checkReaderOpen() throws IOException {
     while (currentInFile == null) {
       List<File> files = Lists.newArrayList(logDirectory.listFiles());
       Collections.sort(files, new Comparator<File>() {
@@ -607,9 +616,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           eventReader = null;
         }
       } else {
-        if (timeout > 0) {
-          waitForWriter(timeout);
-          timeout = 0;
+        if (getBatchTTL() > 0) {
+          waitForWriter();
         } else {
           return false;
         }
@@ -623,7 +631,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     return true;
   }
 
-  private boolean nextReader(long timeout) throws IOException {
+  private boolean nextReader() throws IOException {
     if (eventReader != null) {
       LOGGER.debug("Closing Reader File {} ", currentInFile);
       eventReader.close();
@@ -649,14 +657,14 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
         currentInFile = null;
       }
     }
-    return checkReaderOpen(timeout);
+    return checkReaderOpen();
   }
 
-  private void waitForWriter(long timeout) throws IOException {
+  private void waitForWriter() throws IOException {
     if (running) {
       // just incase we have to wait for a while for the lock, get the last modified now,
       // so we can see if its modified since we started waiting.
-      if (timeout > 0) {
+      if (getBatchTTL() > 0) {
         synchronized (waitingForFileLock) {
           try {
             LOGGER.debug("Waiting for more data read:{} written:{} ", nread, nwrite);
@@ -671,7 +679,10 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
                       "Possible event loss, waiting to read when there are more events written read:{} written:{}",
                       nread, nwrite);
             }
-            waitingForFileLock.wait(timeout);
+            long wait = getBatchTTL();
+            if ( wait > 0 ) {
+              waitingForFileLock.wait(wait);
+            }
           } catch (InterruptedException e) {
           }
         }
