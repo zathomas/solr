@@ -59,7 +59,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   @Property(intValue = 200)
   static final String BATCHED_INDEX_SIZE = "batched-index-size";
-
+  
   @Property(longValue = 5000)
   static final String BATCH_DELAY = "batch-delay";
 
@@ -73,7 +73,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   private static final String END = "--end--";
 
   private static final Integer DEFAULT_BATCHED_INDEX_SIZE = 100;
-
+  
   private static final Long DEFAULT_BATCH_DELAY = 5000L;
 
   @Reference
@@ -118,7 +118,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   private RepositorySession repositorySession;
 
   protected int batchedIndexSize;
-
+  
   protected long batchDelay;
 
   private Set<File> deleteQueue;
@@ -127,7 +127,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   private int savedLineNo;
 
-
+  
   /**
    * A protective lock surrounding adding and removing keys from the handlers map. THis is
    * there because we could have 2 threads adding to the same key at the same time. Its
@@ -145,7 +145,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     sparseSession = sparseRepository.loginAdministrative();
     batchedIndexSize = OsgiUtil.toInteger(properties.get(BATCHED_INDEX_SIZE),
         DEFAULT_BATCHED_INDEX_SIZE);
-
+    
     batchDelay = OsgiUtil.toLong(properties.get(BATCH_DELAY), DEFAULT_BATCH_DELAY);
 
     repositorySession = new RepositorySession() {
@@ -330,7 +330,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
                 try {
                   LOGGER.debug("Got Handler {} for event {} {}", new Object[] {
                       contentIndexHandler, event, event.getProperty("path") });
-
+  
                   for (String deleteQuery : contentIndexHandler.getDeleteQueries(
                       repositorySession, event)) {
                     if (service != null) {
