@@ -28,11 +28,17 @@
             <Bundle-Category>sakai-nakamura</Bundle-Category>
             <Export-Package>
               org.sakaiproject.nakamura.api.solr.*,
+              org.apache.lucene.index;-split-package:=merge-first,
+              org.apache.lucene.analysis,
+              org.apache.lucene.queryParser,
+              org.apache.lucene.search;-split-package:=merge-first,
+              org.apache.lucene.util,
               org.apache.solr.common,
               org.apache.solr.common.params,
               org.apache.solr.client.solrj,
               org.apache.solr.client.solrj.response,
-              org.apache.solr.client.solrj.util
+              org.apache.solr.client.solrj.util,
+              org.apache.solr.schema
 			</Export-Package>
 			<Import-Package>
 			!org.apache.noggit,
