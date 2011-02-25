@@ -53,6 +53,7 @@
 			!org.dom4j.*,
 			!org.apache.regexp.*,
             com.ctc.wstx.stax;resolution:=optional,
+            org.mortbay.*;resolution:=optional,
                *
              </Import-Package>
             <Private-Package>org.sakaiproject.nakamura.solr.*, org.apache.solr.core;-split-package:=merge-first</Private-Package>
