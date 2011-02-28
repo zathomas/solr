@@ -370,18 +370,11 @@
 
     <!-- lowercases the entire field value, keeping it as a single token.  -->
     <fieldType name="lowercase" class="solr.TextField" positionIncrementGap="100">
-      <analyzer type="index">
-        <tokenizer class="solr.StandardTokenizerFactory"/>
+      <analyzer>
+        <tokenizer class="solr.KeywordTokenizerFactory"/>
         <filter class="solr.LowerCaseFilterFactory"/>
-        <filter class="solr.RemoveDuplicatesTokenFilterFactory"/>
-      </analyzer>
-      <analyzer type="query">
-        <tokenizer class="solr.StandardTokenizerFactory"/>
-        <filter class="solr.LowerCaseFilterFactory"/>
-        <filter class="solr.RemoveDuplicatesTokenFilterFactory"/>
       </analyzer>
     </fieldType>
-
 
     <!-- since fields of this type are by default not stored or indexed,
          any data added to them will be ignored outright.  --> 
@@ -460,15 +453,15 @@
    <field name="linkpaths" type="string" indexed="true" stored="false" />
 
    <!-- sakai users -->
-   <field name="name" type="lowercase" indexed="true" stored="true" />
-   <field name="firstName" type="lowercase" indexed="true" stored="true" />
-   <field name="lastName" type="lowercase" indexed="true" stored="true" />
-   <field name="email" type="lowercase" indexed="true" stored="true" />
+   <field name="name" type="text" indexed="true" stored="true" />
+   <field name="firstName" type="text" indexed="true" stored="true" />
+   <field name="lastName" type="text" indexed="true" stored="true" />
+   <field name="email" type="text" indexed="true" stored="true" />
    <field name="type" type="string" indexed="true" stored="true" />
 
    <!-- sakai groups -->
-   <field name="title" type="lowercase" indexed="true" stored="true" />
-   <field name="description" type="lowercase" indexed="true" stored="true" />
+   <field name="title" type="text" indexed="true" stored="true" />
+   <field name="description" type="text" indexed="true" stored="true" />
 
    <!-- sakai/activity -->
    <field name="timestamp" type="long" indexed="true" stored="false" />
