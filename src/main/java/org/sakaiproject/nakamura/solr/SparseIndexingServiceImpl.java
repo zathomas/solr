@@ -206,13 +206,27 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     if (topic.endsWith(StoreListener.DELETE_TOPIC) || topic.endsWith(StoreListener.UPDATED_TOPIC)) {
       String path = (String) event.getProperty(FIELD_PATH);
       if (!ignore(path)) {
-        return getHandler(repositorySession, path).getDeleteQueries(repositorySession,
-            event);
+        String resourceType = (String) event.getProperty("resourceType");
+        if (resourceType != null) {
+          return getHandler(resourceType).getDeleteQueries(repositorySession,
+              event);
+        } else {
+          return getHandler(repositorySession, path).getDeleteQueries(repositorySession,
+              event);
+        }
       }
     } else {
       LOGGER.debug("No delete action require on {} ", event);
     }
     return ImmutableList.of();
+  }
+
+  private IndexingHandler getHandler(String resourceType) {
+    IndexingHandler handler = indexers.get(resourceType);
+    if (handler == null) {
+      handler = defaultHandler;
+    }
+    return handler;
   }
 
   public void addHandler(String key, IndexingHandler handler) {
