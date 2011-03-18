@@ -101,7 +101,7 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
       LOGGER.debug("Update action at path:{}  require on {} ", path, event);
       
       if (!ignore(path)) {
-        Collection<SolrInputDocument> docs = getHander(repositorySession, path)
+        Collection<SolrInputDocument> docs = getHandler(repositorySession, path)
             .getDocuments(repositorySession, event);
         List<SolrInputDocument> outputDocs = Lists.newArrayList();
         for (SolrInputDocument doc : docs) {
@@ -155,7 +155,7 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
   }
 
 
-  private IndexingHandler getHander(RepositorySession repositorySession, String path) {
+  private IndexingHandler getHandler(RepositorySession repositorySession, String path) {
     Session session = repositorySession.adaptTo(Session.class);
 
     while (!isRoot(path)) {
@@ -225,10 +225,10 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
   public Collection<String> getDeleteQueries(RepositorySession repositorySession,
       Event event) {
     String topic = event.getTopic();
-    if (topic.endsWith(REMOVE_TOPIC) || topic.endsWith(CHANGED_TOPIC)) {
+    if (topic.endsWith(REMOVE_TOPIC)) {
       String path = (String) event.getProperty("path");
       if (!ignore(path)) {
-        return getHander(repositorySession, path).getDeleteQueries(repositorySession,
+        return getHandler(repositorySession, path).getDeleteQueries(repositorySession,
             event);
       }
     } else {
