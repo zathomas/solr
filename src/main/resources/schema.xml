@@ -439,7 +439,7 @@
    <field name="lastModifiedBy" type="string" indexed="true" stored="false" /> 
    <field name="lastModified" type="long" indexed="true" stored="false" /> 
    <field name="readers" type="string" indexed="true" stored="true" multiValued="true" /> 
-   <field name="path" type="string" indexed="true" stored="true" multiValued="true" /> 
+   <field name="path" type="string" indexed="true" stored="true" multiValued="true" />
    
    <!--  sakai/pooled-content -->
    <field name="needsprocessing" type="string" indexed="true" stored="true" />
@@ -483,6 +483,9 @@
 
    <!-- sakai/calendar -->
    <field name="vcal-DTSTART" type="date" indexed="true" stored="false" />
+
+   <!-- sakai/pagecontent -->
+   <field name="pagepath" type="string" indexed="true" stored="true" multiValued="true" />
 
    <!--  general sakai -->   
    <dynamicField name="sakai*"  type="string"  indexed="true"  stored="true"/>
