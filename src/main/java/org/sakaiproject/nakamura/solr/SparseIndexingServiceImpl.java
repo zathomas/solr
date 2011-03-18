@@ -87,7 +87,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
   public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession,
       Event event) {
     String topic = event.getTopic();
-    if (topic.endsWith(StoreListener.ADDED_TOPIC)) {
+    if (topic.endsWith(StoreListener.UPDATED_TOPIC) || topic.endsWith(StoreListener.ADDED_TOPIC)) {
       String path = (String) event.getProperty(FIELD_PATH);
       if (!ignore(path)) {
         LOGGER.debug("Update action at path:{}  require on {} ", path, event);
