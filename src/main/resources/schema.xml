@@ -467,7 +467,7 @@
    <field name="timestamp" type="long" indexed="true" stored="false" />
 
    <!-- sakai/contact -->
-   <field name="state" type="string" indexed="true" stored="false" />
+   <field name="state" type="string" indexed="true" stored="true" />
 
    <!-- sakai/message -->
    <field name="messagebox" type="string" indexed="true" stored="false" />
