@@ -201,7 +201,10 @@
         -->
     <fieldType name="text" class="solr.TextField" positionIncrementGap="100" autoGeneratePhraseQueries="true">
       <analyzer type="index">
-        <tokenizer class="solr.WhitespaceTokenizerFactory"/>
+        <!-- use ngram tokenizer to search for things in the middle of terms without -->
+        <!-- the user having to specify a prefixed *. -->
+        <tokenizer class="solr.analysis.NGramTokenizerFactory" minGramSize="3" maxGramSize="5" />
+
         <!-- in this example, we will only use synonyms at query time
         <filter class="solr.SynonymFilterFactory" synonyms="index_synonyms.txt" ignoreCase="true" expand="false"/>
         -->
