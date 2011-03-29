@@ -487,8 +487,8 @@
    <!-- sakai/calendar -->
    <field name="vcal-DTSTART" type="date" indexed="true" stored="false" />
 
-   <!-- sakai/pagecontent -->
-   <field name="pagepath" type="string" indexed="true" stored="true" multiValued="true" />
+   <!-- sakai/widget-data -->
+   <field name="widgetdata" type="text" indexed="true" stored="false" />
 
    <!--  general sakai -->   
    <dynamicField name="sakai*"  type="string"  indexed="true"  stored="true"/>
