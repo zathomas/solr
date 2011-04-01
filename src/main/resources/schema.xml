@@ -490,6 +490,9 @@
    <!-- sakai/widget-data -->
    <field name="widgetdata" type="text" indexed="true" stored="false" />
 
+   <!-- used by searches that return a path that isn't the indexed content itself -->
+   <field name="returnpath" type="string" indexed="true" stored="false" />
+
    <!--  general sakai -->   
    <dynamicField name="sakai*"  type="string"  indexed="true"  stored="true"/>
    
