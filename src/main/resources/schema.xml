@@ -203,7 +203,7 @@
       <analyzer type="index">
         <!-- use ngram tokenizer to search for things in the middle of terms without -->
         <!-- the user having to specify a prefixed *. -->
-        <tokenizer class="solr.analysis.NGramTokenizerFactory" minGramSize="3" maxGramSize="5" />
+        <tokenizer class="solr.analysis.NGramTokenizerFactory" minGramSize="3" maxGramSize="15" />
 
         <!-- in this example, we will only use synonyms at query time
         <filter class="solr.SynonymFilterFactory" synonyms="index_synonyms.txt" ignoreCase="true" expand="false"/>
