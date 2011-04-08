@@ -495,7 +495,7 @@
 
    <!--  general sakai -->   
    <dynamicField name="sakai*"  type="string"  indexed="true"  stored="true"/>
-   <field name="ngram" type="textgen" indexed="true" stored="false" />
+   <field name="ngram" type="textgen" indexed="true" stored="false" multiValued="true" />
    
 <!-- 
    <field name="id" type="string" indexed="true" stored="true" required="true" /> 
