@@ -113,10 +113,10 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
         }
         return outputDocs;
       } else {
-        LOGGER.info("Ignored action at path:{}  require on {} ", path, event);
+        LOGGER.debug("Ignored action at path:{}  require on {} ", path, event);
       }
     } else {
-      LOGGER.info("No update action require on {} ", event);
+      LOGGER.debug("No update action require on {} ", event);
     }
     return ImmutableList.of();
   }
@@ -178,11 +178,11 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
                       resourceType, handler, path, indexers });
                   return handler;
                 } else {
-                  LOGGER.info("Ignored {} no handler for {} ", path, resourceType);
+                  LOGGER.debug("Ignored {} no handler for {} ", path, resourceType);
                   ignoreCache.put(path, path);
                 }
               } else {
-                LOGGER.info("Ignored {} no resource type ",path);
+                LOGGER.debug("Ignored {} no resource type ",path);
               }
             }
           }
