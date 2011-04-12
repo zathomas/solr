@@ -133,7 +133,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
         doc.setField(FIELD_RESOURCE_TYPE, content.getProperty("sling:resourceType"));
       }
       String path = content.getPath();
-      doc.setField(FIELD_ID, path);
+      doc.setField(FIELD_ID, StorageClientUtils.getUuid());
       while( path != null ) {
         doc.addField(FIELD_PATH, path);
         String newPath = Utils.getParentPath(path);
