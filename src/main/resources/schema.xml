@@ -277,6 +277,18 @@
       </analyzer>
     </fieldType>
 
+    <fieldType name="edgetextgen" class="solr.TextField" positionIncrementGap="100">
+      <analyzer type="index">
+          <tokenizer class="solr.KeywordTokenizerFactory" />
+          <filter class="solr.LowerCaseFilterFactory" />
+          <filter class="solr.EdgeNGramFilterFactory" minGramSize="1" maxGramSize="2" />
+        </analyzer>
+        <analyzer type="query">
+          <tokenizer class="solr.KeywordTokenizerFactory" />
+          <filter class="solr.LowerCaseFilterFactory" />
+        </analyzer>
+    </fieldType>
+
 
     <!-- A general unstemmed text field that indexes tokens normally and also
          reversed (via ReversedWildcardFilterFactory), to enable more efficient 
@@ -493,9 +505,10 @@
    <!-- used by searches that return a path that isn't the indexed content itself -->
    <field name="returnpath" type="string" indexed="true" stored="false" />
 
-   <!--  general sakai -->   
-   <dynamicField name="sakai*"  type="string"  indexed="true"  stored="true"/>
+   <!--  general sakai -->
    <field name="ngram" type="textgen" indexed="true" stored="false" multiValued="true" />
+   <field name="edgengram" type="edgetextgen" indexed="true" stored="false" multiValued="true" />   
+   <dynamicField name="sakai*"  type="string"  indexed="true"  stored="true"/>
    
 <!-- 
    <field name="id" type="string" indexed="true" stored="true" required="true" /> 
@@ -646,6 +659,17 @@
    <copyField source="title" dest="ngram"/>
    <copyField source="description" dest="ngram"/>
    <copyField source="widgetdata" dest="ngram"/>
+
+   <copyField source="content" dest="edgengram"/>
+   <copyField source="filename" dest="edgengram"/>
+   <copyField source="tag" dest="edgengram"/>
+   <copyField source="name" dest="edgengram"/>
+   <copyField source="firstName" dest="edgengram"/>
+   <copyField source="lastName" dest="edgengram"/>
+   <copyField source="email" dest="edgengram"/>
+   <copyField source="title" dest="edgengram"/>
+   <copyField source="description" dest="edgengram"/>
+   <copyField source="widgetdata" dest="edgengram"/>
 	
    <!-- Above, multiple source fields are copied to the [text] field. 
 	  Another way to map multiple source fields to the same 
