@@ -302,6 +302,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
               }
               events.put(path, loadEvent);
             }
+          } else {
+            LOGGER.info("Ignoring event [{}] because it lacks a 'path' property", loadEvent);
           }
           if (events.size() >= batchedIndexSize) {
             break;
