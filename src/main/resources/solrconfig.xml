@@ -604,8 +604,8 @@
     analysis.showmatch (true|false) - When set to true and when query analysis is performed, the produced
                                       tokens of the field value analysis will be marked as "matched" for every
                                       token that is produces by the query analysis
-  <requestHandler name="/analysis/field" class="solr.FieldAnalysisRequestHandler" />
    -->
+  <requestHandler name="/analysis/field" class="solr.FieldAnalysisRequestHandler" />
 
 
   <!-- CSV update handler, loaded on demand 
@@ -635,8 +635,8 @@
      <str name="hidden">anotherfile.txt</str> 
     </lst>
   </requestHandler>
-  <requestHandler name="/admin/" class="org.apache.solr.handler.admin.AdminHandlers" />
   -->
+  <requestHandler name="/admin/" class="org.apache.solr.handler.admin.AdminHandlers" />
 
   <!-- ping/healthcheck 
   <requestHandler name="/admin/ping" class="PingRequestHandler">
