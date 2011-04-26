@@ -39,6 +39,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -287,8 +288,13 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
         try {
           loadEvent = readEvent();
         } catch (Throwable t) {
-          LOGGER.warn("Unreadable Event at {} {} ", currentInFile, lineNo);
-          LOGGER.warn("Reported exception follows:", t);
+          if ( running ) {
+            LOGGER.warn("Unreadable Event at {} {} ", currentInFile, lineNo);
+            LOGGER.warn("Reported exception follows:", t);
+          } else {
+            LOGGER.debug("Unreadable Event at {} {} ", currentInFile, lineNo);
+            LOGGER.debug("Reported exception follows:", t);
+          }
         }
         Map<String, Event> events = Maps.newLinkedHashMap();
         while (loadEvent != null) {
@@ -304,7 +310,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
               events.put(path, loadEvent);
             }
           } else {
-            LOGGER.info("Ignoring event [{}] because it lacks a 'path' property", loadEvent);
+            LOGGER.info("Ignoring event [{}] because it lacks a 'path' property {}", loadEvent, Arrays.toString(loadEvent.getPropertyNames()));
           }
           if (events.size() >= batchedIndexSize) {
             break;

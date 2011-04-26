@@ -94,6 +94,7 @@ public class ContentEventListenerSoak {
         Dictionary<String, Object> props = new Hashtable<String, Object>();
         props.put("evnumber", i);
         props.put("a nasty,key", "with a, nasty \n value");
+        props.put("path", "path/"+j+"/"+i);
         contentEventListener.handleEvent(new Event("test/topic", props));
       }
       int t = r.nextInt(10000);
