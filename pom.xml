@@ -68,8 +68,8 @@
       <plugin>
         <groupId>org.apache.felix</groupId>
         <artifactId>maven-bundle-plugin</artifactId>
-        <version>2.0.1</version>
         <extensions>true</extensions>
+        <version>2.0.1</version>
         <configuration>
           <instructions>
             <Bundle-Category>sakai-nakamura</Bundle-Category>
@@ -288,4 +288,29 @@
       </plugin>
     </plugins>
   </reporting>
+<!-- ====================================================================== -->
+<!-- D I S T R I B U T I O N M A N A G E M E N T -->
+<!-- ====================================================================== -->
+  <distributionManagement>
+    <downloadUrl>http://source.sakaiproject.org/maven2/</downloadUrl>
+    <snapshotRepository>
+       <uniqueVersion>false</uniqueVersion>
+       <id>sakai-maven-snapshots-scp</id>
+       <name>Sakai snapshot Repo</name>
+       <url>scp://source.sakaiproject.org/var/www/html/maven2-snapshots</url>
+       <layout>default</layout>
+    </snapshotRepository>
+    <repository>
+      <uniqueVersion>false</uniqueVersion>
+      <id>sakai-maven2-scp</id>
+      <name>Sakai maven2 repository</name>
+      <url>scp://source.sakaiproject.org/var/www/html/maven2</url>
+      <layout>default</layout>
+    </repository>
+    <site>
+      <id>sakai-site</id>
+      <name>Sakai release Site</name>
+      <url>scp://source.sakaiproject.org/var/www/html/release/nakamura/${project.version}</url>
+    </site>
+  </distributionManagement>
 </project>
