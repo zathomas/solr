@@ -287,7 +287,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
         try {
           loadEvent = readEvent();
         } catch (Throwable t) {
-          LOGGER.warn("Unreadble Event at {} {} ", currentInFile, lineNo);
+          LOGGER.warn("Unreadable Event at {} {} ", currentInFile, lineNo);
+          LOGGER.warn("Reported exception follows:", t);
         }
         Map<String, Event> events = Maps.newLinkedHashMap();
         while (loadEvent != null) {
@@ -313,7 +314,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           try {
             loadEvent = readEvent();
           } catch (Throwable t) {
-            LOGGER.warn("Unreadble Event at {} {} ", currentInFile, lineNo);
+            LOGGER.warn("Unreadable Event at {} {} ", currentInFile, lineNo);
+            LOGGER.warn("Reported exception follows:", t);
           }
         }
         if (events.size() > 0) {
@@ -425,7 +427,6 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   private String nextEvent() throws IOException {
     String line = null;
     int possibleEnd = 0;
-    long loadedAt = 0;
     if (checkReaderOpen()) {
       while (line == null || END.equals(line)) {
         if (END.equals(line)) {
@@ -447,7 +448,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           // if we get null from a buffered reader that means end of file, but there was
           // no end statement
           // so we need to check if this really is the end of file
-          if (getBatchTTL() > 0) {
+          if (possibleEnd != 0 || getBatchTTL() > 0) {
             if (possibleEnd == 0) {
               // even though the writer wrote something, we still couldnt read
               waitForWriter();
@@ -469,7 +470,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
               File nextFile = null;
 
               for (File f : files) {
-                if (f.lastModified() > loadedAt) {
+                if (f.lastModified() > currentInFile.lastModified()) {
                   if (nextFile == null) {
                     nextFile = f;
                   } else if (f.lastModified() < nextFile.lastModified()) {
@@ -477,6 +478,9 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
                   }
                 }
               }
+
+              LOGGER.debug("Located next file: {}", nextFile);
+
               if (nextFile == null) {
                 return null;
               } else if (nextFile.equals(currentInFile)) {
