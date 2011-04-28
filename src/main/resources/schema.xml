@@ -510,7 +510,19 @@
    <field name="ngram" type="textgen" indexed="true" stored="false" multiValued="true" />
    <field name="edgengram" type="edgetextgen" indexed="true" stored="false" multiValued="true" />   
    <dynamicField name="sakai*"  type="string"  indexed="true"  stored="true"/>
-   
+
+   <!-- fields used for sorting -->
+   <!-- several of these fields have the same type as their analog but are repeated here -->
+   <!-- for consistency of use and lower maintenance cost. if a field needs to be used   -->
+   <!-- for sorting then it should have an analogous field listed here. These fields are -->
+   <!-- populated with copyField directives further down in this file.                   -->
+   <field name="_created_sort" type="long" indexed="true" stored="false" />
+   <field name="_lastModified_sort" type="long" indexed="true" stored="false" />
+   <field name="timestamp_sort" type="long" indexed="true" stored="false" />
+   <field name="vcal-DTSTART_sort" type="date" indexed="true" stored="false" />
+   <field name="title_sort" type="lowercase" indexed="true" stored="false" />
+   <field name="firstName_sort" type="lowercase" indexed="true" stored="false" />
+   <field name="lastName_sort" type="lowercase" indexed="true" stored="false" />
 <!-- 
    <field name="id" type="string" indexed="true" stored="true" required="true" /> 
    <field name="sku" type="textTight" indexed="true" stored="true" omitNorms="true"/>
@@ -650,6 +662,7 @@
    <copyField source="includes" dest="text"/>
    <copyField source="manu" dest="manu_exact"/>
  -->
+   <!-- fields to copy to ngram field for searching -->
    <copyField source="content" dest="ngram"/>
    <copyField source="filename" dest="ngram"/>
    <copyField source="tag" dest="ngram"/>
@@ -661,6 +674,7 @@
    <copyField source="description" dest="ngram"/>
    <copyField source="widgetdata" dest="ngram"/>
 
+   <!-- fields to copy to ngram field for searching -->
    <copyField source="content" dest="edgengram"/>
    <copyField source="filename" dest="edgengram"/>
    <copyField source="tag" dest="edgengram"/>
@@ -671,6 +685,15 @@
    <copyField source="title" dest="edgengram"/>
    <copyField source="description" dest="edgengram"/>
    <copyField source="widgetdata" dest="edgengram"/>
+
+   <!-- fields to copy to simpler processing for better sorting -->
+   <copyField source="_created" dest="_created_sort" />
+   <copyField source="_lastModified" dest="_lastModified_sort" />
+   <copyField source="timestamp" dest="timestamp_sort" />
+   <copyField source="vcal-DTSTART" dest="vcal-DTSTART_sort" />
+   <copyField source="title" dest="title_sort" />
+   <copyField source="firstName" dest="firstName_sort" />
+   <copyField source="lastName" dest="lastName_sort" />
 	
    <!-- Above, multiple source fields are copied to the [text] field. 
 	  Another way to map multiple source fields to the same 
