@@ -111,7 +111,6 @@
               org.apache.solr.schema
 			</Export-Package>
 			<Import-Package>
-			!org.apache.noggit,
 			!com.werken.*,
 			!org.apache.log.*,
 			!org.apache.tools.ant.*,
@@ -131,6 +130,7 @@
             <Embed-Dependency>
                solr-core,
                solr-solrj,
+               solr-noggit,
                lucene-core,
                lucene-analyzers-common,
                lucene-analyzers-phonetic,
@@ -170,6 +170,12 @@
       <groupId>org.apache.solr</groupId>
       <artifactId>solr-core</artifactId>
       <version>4.0.1040465</version>
+     </dependency>
+     <!-- json library used by solr when faceting -->
+     <dependency>
+       <groupId>org.apache.solr</groupId>
+       <artifactId>solr-noggit</artifactId>
+       <version>4.0.1040465</version>
      </dependency>
      <dependency>
        <groupId>org.apache.zookeeper</groupId>
