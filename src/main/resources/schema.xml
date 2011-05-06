@@ -473,7 +473,7 @@
    <field name="lastName" type="text" indexed="true" stored="true" />
    <field name="email" type="text" indexed="true" stored="true" />
    <field name="type" type="string" indexed="true" stored="true" />
-   <field name="group" type="string" indexed="true" stored="false" multiValued="true" />
+   <field name="group" type="string" indexed="true" stored="true" multiValued="true" />
 
    <!-- sakai groups -->
    <field name="title" type="text" indexed="true" stored="true" />
