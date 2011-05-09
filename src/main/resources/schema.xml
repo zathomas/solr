@@ -510,6 +510,7 @@
    <field name="ngram" type="textgen" indexed="true" stored="false" multiValued="true" />
    <field name="edgengram" type="edgetextgen" indexed="true" stored="false" multiValued="true" />   
    <dynamicField name="sakai*"  type="string"  indexed="true"  stored="true"/>
+   <dynamicField name="random_*" type="random" indexed="true" stored="false"/>
 
    <!-- fields used for sorting -->
    <!-- several of these fields have the same type as their analog but are repeated here -->
