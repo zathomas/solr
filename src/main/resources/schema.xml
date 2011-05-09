@@ -476,7 +476,7 @@
    <field name="group" type="string" indexed="true" stored="true" multiValued="true" />
 
    <!-- sakai groups -->
-   <field name="title" type="text" indexed="true" stored="true" />
+   <field name="title" type="text" indexed="true" stored="true" termVectors="true" />
    <field name="description" type="text" indexed="true" stored="true" />
 
    <!-- sakai/activity -->
