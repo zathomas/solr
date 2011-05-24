@@ -445,7 +445,7 @@
    -->
    
    <field name="id" type="string" indexed="true" stored="true" required="true" /> 
-   <field name="resourceType" type="string" indexed="true" stored="true"  />
+   <field name="resourceType" type="string" indexed="true" stored="true" termVectors="true" />
    <field name="someother" type="string" indexed="true" stored="true" multiValued="true" /> 
    <field name="sakai.group" type="string" indexed="true" stored="true" /> 
    <field name="content" type="text" indexed="true" stored="false" termVectors="true" termPositions="true" termOffsets="true" />
@@ -458,8 +458,8 @@
    
    <!--  sakai/pooled-content -->
    <field name="needsprocessing" type="string" indexed="true" stored="true" />
-   <field name="manager" type="string" indexed="true" stored="true"  multiValued="true" />
-   <field name="viewer" type="string" indexed="true" stored="true"  multiValued="true" />
+   <field name="manager" type="string" indexed="true" stored="true" termVectors="true" multiValued="true" />
+   <field name="viewer" type="string" indexed="true" stored="true" termVectors="true" multiValued="true" />
    <field name="filename" type="text" indexed="true" stored="true" />
    <field name="file" type="string" indexed="true" stored="true" />
    <field name="tagname" type="string" indexed="true" stored="true" />
