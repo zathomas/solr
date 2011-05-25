@@ -467,6 +467,7 @@
    <field name="tag" type="text" indexed="true" stored="true"  multiValued="true" />
    <field name="linkpaths" type="string" indexed="true" stored="false" />
    <field name="custom-mimetype" type="string" indexed="true" stored="false" />
+   <field name="access" type="string" indexed="true" stored="false" />
 
    <!-- sakai users -->
    <field name="name" type="text" indexed="true" stored="true" termVectors="true" />
