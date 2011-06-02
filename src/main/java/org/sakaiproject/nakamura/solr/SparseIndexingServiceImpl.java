@@ -13,6 +13,7 @@ import org.apache.felix.scr.annotations.Properties;
 import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
+import org.apache.sling.commons.osgi.OsgiUtil;
 import org.apache.solr.common.SolrInputDocument;
 import org.osgi.service.event.Event;
 import org.sakaiproject.nakamura.api.lite.Session;
@@ -71,7 +72,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
   @Activate
   public void activate(Map<String, Object> properties) {
     defaultHandler = new DefaultSparseHandler();
-    topics = Utils.getSetting(properties.get(PROP_TOPICS), StoreListener.DEFAULT_TOPICS);
+    topics = OsgiUtil.toStringArray(properties.get(PROP_TOPICS), StoreListener.DEFAULT_TOPICS);
     for (String topic : topics) {
       contentIndexer.addHandler(topic, this);
     }

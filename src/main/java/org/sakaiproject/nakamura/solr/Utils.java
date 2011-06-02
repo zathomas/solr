@@ -11,14 +11,6 @@ public class Utils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Utils.class);
 
-  @SuppressWarnings("unchecked")
-  public static <T> T getSetting(Object setting, T defaultSetting) {
-    if (setting == null) {
-      return defaultSetting;
-    }
-    return (T) setting;
-  }
-
   public static String getParentPath(String path) {
     if ("/".equals(path)) {
       return "/";
