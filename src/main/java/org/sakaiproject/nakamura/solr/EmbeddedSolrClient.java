@@ -4,8 +4,10 @@ import org.apache.commons.io.IOUtils;
 import org.apache.felix.scr.annotations.Activate;
 import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
+import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
+import org.apache.sling.commons.osgi.OsgiUtil;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer;
 import org.apache.solr.core.CoreContainer;
@@ -24,12 +26,16 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URL;
 import java.util.Dictionary;
 import java.util.Hashtable;
+import java.util.Properties;
 
 import javax.xml.parsers.ParserConfigurationException;
 
@@ -49,6 +55,11 @@ public class EmbeddedSolrClient implements SolrServerService {
   private CoreContainer coreContainer;
   private SolrCore nakamuraCore;
 
+  @Property(value = "solrconfig.xml")
+  private static final String PROP_SOLR_CONFIG = "solrconfig";
+  @Property(value = "solrconfig.xml")
+  private static final String PROP_SOLR_SCHEMA = "solrschema";
+
   @Reference
   protected ConfigurationAdmin configurationAdmin;
 
@@ -57,6 +68,10 @@ public class EmbeddedSolrClient implements SolrServerService {
       ParserConfigurationException, SAXException {
     BundleContext bundleContext = componentContext.getBundleContext();
     solrHome = Utils.getSolrHome(bundleContext);
+    @SuppressWarnings("unchecked")
+    Dictionary<String, Object> properties = componentContext.getProperties();
+    String schemaLocation = OsgiUtil.toString(properties.get(PROP_SOLR_SCHEMA), "schema.xml");
+    String configLocation = OsgiUtil.toString(properties.get(PROP_SOLR_CONFIG), "solrconfig.xml");
     // Note that the following property could be set through JVM level arguments too
     LOGGER.debug("Logger for Embedded Solr is in {slinghome}/log/solr.log at level INFO");
     Configuration logConfiguration = getLogConfiguration();
@@ -84,13 +99,17 @@ public class EmbeddedSolrClient implements SolrServerService {
     // deployFile(coreConfigDir,"schema.xml");
     ClassLoader contextClassloader = Thread.currentThread().getContextClassLoader();
     Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
+    InputStream schemaStream = null;
+    InputStream configStream = null;
     try {
       NakamuraSolrResourceLoader loader = new NakamuraSolrResourceLoader(solrHome, this
           .getClass().getClassLoader());
       coreContainer = new CoreContainer(loader);
-      SolrConfig config = new NakamuraSolrConfig(loader, "solrconfig.xml",
-          getStream("solrconfig.xml"));
-      IndexSchema schema = new IndexSchema(config, null, getStream("schema.xml"));
+      configStream = getStream(configLocation);
+      schemaStream = getStream(schemaLocation);
+      SolrConfig config = new NakamuraSolrConfig(loader, configLocation,
+          configStream);
+      IndexSchema schema = new IndexSchema(config, schemaLocation, schemaStream);
       nakamuraCore = new SolrCore("nakamura", coreDir.getAbsolutePath(), config, schema,
           null);
       coreContainer.register("nakamura", nakamuraCore, false);
@@ -99,8 +118,20 @@ public class EmbeddedSolrClient implements SolrServerService {
           coreContainer.getCoreNames());
     } finally {
       Thread.currentThread().setContextClassLoader(contextClassloader);
+      safeClose(schemaStream);
+      safeClose(configStream);
     }
 
+  }
+
+  private void safeClose(InputStream stream) {
+    if ( stream != null ) {
+      try {
+        stream.close();
+      } catch ( IOException e ){
+        LOGGER.debug(e.getMessage(),e);
+      }
+    }
   }
 
   private Configuration getLogConfiguration() throws IOException {
@@ -117,8 +148,27 @@ public class EmbeddedSolrClient implements SolrServerService {
     return logConfiguration;
   }
 
-  private InputStream getStream(String name) {
-    return this.getClass().getResourceAsStream(name);
+  private InputStream getStream(String name) throws FileNotFoundException {
+    if (name.contains(":")) {
+      // try a URL
+      try {
+        URL u = new URL(name);
+        InputStream in = u.openStream();
+        if (in != null) {
+          return in;
+        }
+      } catch (IOException e) {
+        LOGGER.debug(e.getMessage(), e);
+      }
+    }
+    // try a file
+    File f = new File(name);
+    if (f.exists()) {
+      return new FileInputStream(f);
+    } else {
+      // try classpath
+      return this.getClass().getResourceAsStream(name);
+    }
   }
 
   private void deployFile(File destDir, String target) throws IOException {
@@ -147,8 +197,13 @@ public class EmbeddedSolrClient implements SolrServerService {
     return server;
   }
 
+  public SolrServer getUpdateServer() {
+    return server;
+  }
+
   public String getSolrHome() {
     return solrHome;
   }
+
 
 }

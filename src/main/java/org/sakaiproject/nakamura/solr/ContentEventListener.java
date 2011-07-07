@@ -328,7 +328,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           LOGGER.info("Processing a batch of {} items, redolog at {}:{}, time remaining for this batch {}", new Object[] {
               events.size(), currentInFile, lineNo, getBatchTTL() });
         }
-        SolrServer service = solrServerService.getServer();
+        SolrServer service = solrServerService.getUpdateServer();
         try {
           boolean needsCommit = false;
           for (Entry<String, Event> ev : events.entrySet()) {
@@ -337,9 +337,12 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
             Collection<IndexingHandler> contentIndexHandlers = handlers.get(topic);
             if (contentIndexHandlers != null) {
               for (IndexingHandler contentIndexHandler : contentIndexHandlers) {
+                String path = "undefined";
+                Collection<SolrInputDocument> docs = null;
                 try {
+                  path = (String) event.getProperty("path");
                   LOGGER.debug("Got Handler {} for event {} {}", new Object[] {
-                      contentIndexHandler, event, event.getProperty("path") });
+                      contentIndexHandler, event, path });
   
                   for (String deleteQuery : contentIndexHandler.getDeleteQueries(
                       repositorySession, event)) {
@@ -354,7 +357,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
                       }
                     }
                   }
-                  Collection<SolrInputDocument> docs = contentIndexHandler.getDocuments(
+                  docs = contentIndexHandler.getDocuments(
                       repositorySession, event);
                   if (service != null) {
                     if (docs != null && docs.size() > 0) {
@@ -364,8 +367,16 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
                     }
                   }
                 } catch ( Throwable t ) {
-                  LOGGER.error("{} Failed to process event {}, cause follows, event ignored for this processor, please fix issue to remove this message (dont delete this log message from the code) ",contentIndexHandler, event);
+                  LOGGER
+                      .error(
+                          "{} Failed to process event {}, {} cause follows, event ignored for " +
+                          "this processor, please fix issue to remove this message (dont delete " +
+                          "this log message from the code) ",
+                          new Object[] { contentIndexHandler, event, path });
                   LOGGER.error(t.getMessage(),t);
+                  for (SolrInputDocument d : docs) {
+                    LOGGER.error("Failed Doc {} ",d);
+                  }
                 }
               }
             }

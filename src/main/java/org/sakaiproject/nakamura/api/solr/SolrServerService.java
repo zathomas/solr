@@ -14,8 +14,14 @@ public interface SolrServerService {
   SolrServer getServer();
 
   /**
+   * @return the Solr Server used to perform updates.
+   */
+  SolrServer getUpdateServer();
+
+  /**
    * @return the location of the Solr Home.
    */
   String getSolrHome();
+
 
 }

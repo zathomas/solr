@@ -68,7 +68,11 @@ public class ContentEventListenerSoak {
       public SolrServer getServer() {
         return null;
       }
-    };;;
+
+      public SolrServer getUpdateServer() {
+        return null;
+      }
+    };
     Map<String, Object> properties = new HashMap<String, Object>();
     Mockito.when(repository.loginAdministrative(null)).thenReturn(session);
     properties.put("dont-run", true);

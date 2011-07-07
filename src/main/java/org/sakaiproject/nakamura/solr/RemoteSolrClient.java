@@ -101,4 +101,8 @@ public class RemoteSolrClient implements SolrServerService {
   public String getSolrHome() {
     return solrHome;
   }
+
+  public SolrServer getUpdateServer() {
+    return server;
+  }
 }
