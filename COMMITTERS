@@ -1,0 +1,23 @@
+The following people have commit access to the Solr Bundle Sources.
+Note that this is not a full list of the Solr Bundles authors, however --
+for that, you'd need to look over the log messages to see all the
+patch contributors.
+
+
+Committers:
+
+            ian@tfd.co.uk                    Ian Boston
+
+
+Contributions:
+   For a complete list of contributions please see the commit log.
+   Contributions include patches from:
+            ray@media.berkeley.edu           Ray Davis
+            cdunstall@csu.edu.au             Chris Dunstall
+            carl@hallwaytech.com             Carl Hall
+            lance@speelmon.com               Lance Speelmon
+            zach@aeroplanesoftware.com       Zach Thomas
+            mawalsh@csu.edu.au               Mark Walsh
+   and others.
+
+
