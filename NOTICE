@@ -11,12 +11,7 @@ the version control system.
 
 This product includes software from the The Apache Software Foundation (http://www.apache.org/).
 
-Patches and contributions made to this software code base are made with an implicit grant of copyright to the above 
-copyright holders in the understanding that this code base and any patches will be Licensed to the Sakai Foundation
-under and Apache 2 Software license for onward distribution. It is the explicit responsibility of the contributor to 
-ensure that all patches and contributions do not contain any patent infringements or intelectual property rights that 
-the contributor does not have the absolute right to contribute. All patches and contributions are assumed to have been
-made under these conditions even if the contributor has not signed a leagal contributors license agreement.
+Patches and contributions made to this code base are made under the terms of the Apache 2 Software License (see para 5).
 
 Binary distributions of this product contain jars developed and licensed by other third parties, identified by the 
 LICENSE and NOTICE files included within each jar under the META-INF directory.
