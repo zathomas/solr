@@ -27,7 +27,6 @@ import org.xml.sax.SAXException;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,7 +34,6 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.util.Dictionary;
 import java.util.Hashtable;
-import java.util.Properties;
 
 import javax.xml.parsers.ParserConfigurationException;
 
@@ -57,7 +55,7 @@ public class EmbeddedSolrClient implements SolrServerService {
 
   @Property(value = "solrconfig.xml")
   private static final String PROP_SOLR_CONFIG = "solrconfig";
-  @Property(value = "solrconfig.xml")
+  @Property(value = "schema.xml")
   private static final String PROP_SOLR_SCHEMA = "solrschema";
 
   @Reference
@@ -107,6 +105,7 @@ public class EmbeddedSolrClient implements SolrServerService {
       coreContainer = new CoreContainer(loader);
       configStream = getStream(configLocation);
       schemaStream = getStream(schemaLocation);
+      LOGGER.info("Configuring with Config {} schema {} ",configLocation, schemaLocation);
       SolrConfig config = new NakamuraSolrConfig(loader, configLocation,
           configStream);
       IndexSchema schema = new IndexSchema(config, schemaLocation, schemaStream);
@@ -148,7 +147,7 @@ public class EmbeddedSolrClient implements SolrServerService {
     return logConfiguration;
   }
 
-  private InputStream getStream(String name) throws FileNotFoundException {
+  private InputStream getStream(String name) throws IOException {
     if (name.contains(":")) {
       // try a URL
       try {
@@ -167,7 +166,12 @@ public class EmbeddedSolrClient implements SolrServerService {
       return new FileInputStream(f);
     } else {
       // try classpath
-      return this.getClass().getResourceAsStream(name);
+      InputStream in = this.getClass().getClassLoader().getResourceAsStream(name);
+      if ( in == null ) {
+        LOGGER.error("Failed to locate stream {}, tried URL, filesystem ", name);
+        throw new IOException("Failed to locate stream "+name+", tried URL, filesystem ");
+      }
+      return null;
     }
   }
 
