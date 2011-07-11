@@ -337,6 +337,14 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
             Collection<IndexingHandler> contentIndexHandlers = handlers.get(topic);
             if (contentIndexHandlers != null) {
               for (IndexingHandler contentIndexHandler : contentIndexHandlers) {
+                /**
+                 * getDeleteQueries and getDocuments must be called for all registered
+                 * indexing handlers. There is the chance that updating a document
+                 * will cause another document to be deleted and this is the only way the
+                 * indexing handler has to interact in that.
+                 * e.g. sakai:excludeSearch gets set to true; that doc needs to be
+                 *      deleted.
+                 */
                 String path = "undefined";
                 Collection<SolrInputDocument> docs = null;
                 try {
