@@ -453,7 +453,7 @@
    <field name="_created" type="long" indexed="true" stored="true" />
    <field name="_lastModifiedBy" type="string" indexed="true" stored="false" /> 
    <field name="_lastModified" type="long" indexed="true" stored="false" /> 
-   <field name="readers" type="string" indexed="true" stored="true" multiValued="true" /> 
+   <field name="readers" type="string" indexed="true" stored="true" multiValued="true" termVectors="true" /> 
    <field name="path" type="string" indexed="true" stored="true" multiValued="true" />
    
    <!--  sakai/pooled-content -->
