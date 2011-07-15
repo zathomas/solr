@@ -455,6 +455,7 @@
    <field name="_lastModified" type="long" indexed="true" stored="false" /> 
    <field name="readers" type="string" indexed="true" stored="true" multiValued="true" termVectors="true" /> 
    <field name="path" type="string" indexed="true" stored="true" multiValued="true" />
+   <field name="countLastUpdate" type="long" indexed="true" stored="true" />    
    
    <!--  sakai/pooled-content -->
    <field name="needsprocessing" type="string" indexed="true" stored="true" />
