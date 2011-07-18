@@ -382,8 +382,10 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
                           "this log message from the code) ",
                           new Object[] { contentIndexHandler, event, path });
                   LOGGER.error(t.getMessage(),t);
-                  for (SolrInputDocument d : docs) {
-                    LOGGER.error("Failed Doc {} ",d);
+                  if (docs != null ) {
+                    for (SolrInputDocument d : docs) {
+                      LOGGER.error("Failed Doc {} ",d);
+                    }
                   }
                 }
               }
