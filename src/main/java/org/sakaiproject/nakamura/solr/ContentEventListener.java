@@ -19,6 +19,7 @@ import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrInputDocument;
 import org.osgi.service.event.Event;
+import org.osgi.service.event.EventAdmin;
 import org.osgi.service.event.EventConstants;
 import org.osgi.service.event.EventHandler;
 import org.sakaiproject.nakamura.api.lite.ClientPoolException;
@@ -85,6 +86,9 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   @Reference
   protected Repository sparseRepository;
+
+  @Reference
+  protected EventAdmin eventAdmin;
 
   private Map<String, Collection<IndexingHandler>> handlers = Maps.newConcurrentHashMap();
 
@@ -395,6 +399,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
             LOGGER.info("Processed {} events in a batch, max {}, TTL {} ", new Object[]{ events.size(),
                 batchedIndexSize, getBatchTTL()});
             service.commit(false, false);
+            eventAdmin.postEvent(new Event("org/sakaiproject/nakamura/solr/COMMIT", new Hashtable()));
           }
           commit();
         } catch (SolrServerException e) {
