@@ -468,6 +468,7 @@
    <field name="tag" type="text" indexed="true" stored="true"  multiValued="true" />
    <field name="linkpaths" type="string" indexed="true" stored="false" />
    <field name="custom-mimetype" type="string" indexed="true" stored="false" />
+   <field name="mimeType" type="string" indexed="true" stored="false" />
    <field name="pagecount" type="string" indexed="true" stored="false" />
    <field name="comment" type="string" indexed="true" stored="false" />
    <field name="hasPreview" type="string" indexed="true" stored="true" />
