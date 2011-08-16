@@ -108,6 +108,7 @@
         <configuration>
           <instructions>
             <Bundle-Category>sakai-nakamura</Bundle-Category>
+            <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
             <Export-Package>
               org.sakaiproject.nakamura.api.solr.*,
               org.apache.lucene.index;-split-package:=merge-first,
