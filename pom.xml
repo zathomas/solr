@@ -372,6 +372,17 @@
       </snapshots>
       <url>http://www2.caret.cam.ac.uk/maven2/</url>
     </repository>
+    <repository>
+      <id>sakai-releases</id>
+      <name>Sakai Releases</name>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <url>http://source.sakaiproject.org/maven2/</url>
+    </repository>
   </repositories>
 
 </project>
