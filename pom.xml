@@ -110,9 +110,10 @@
             <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
             <Export-Package>
               org.sakaiproject.nakamura.api.solr.*,
-              org.apache.lucene.index;-split-package:=merge-first,
               org.apache.lucene.analysis,
+              org.apache.lucene.index;-split-package:=merge-first,
               org.apache.lucene.queryParser,
+              org.apache.lucene.queryparser.classic,
               org.apache.lucene.search;-split-package:=merge-first,
               org.apache.lucene.util,
               org.apache.solr.common,
@@ -138,7 +139,11 @@
             org.mortbay.*;resolution:=optional,
                *
              </Import-Package>
-            <Private-Package>org.sakaiproject.nakamura.solr.*, org.apache.solr.core;-split-package:=merge-first</Private-Package>
+            <Private-Package>
+                  org.sakaiproject.nakamura.solr.*, 
+                  org.apache.solr.core;-split-package:=merge-first,
+                  org.apache.lucene.*;-split-package:=merge-first
+            </Private-Package>
             <Embed-Transitive>true</Embed-Transitive>
             <Embed-Dependency>
                solr-core,
@@ -177,23 +182,28 @@
      <dependency>
       <groupId>org.apache.solr</groupId>
       <artifactId>solr-solrj</artifactId>
-      <version>4.0.1040465</version>
+      <version>4.0.1162474</version>
      </dependency>
      <dependency>
       <groupId>org.apache.solr</groupId>
       <artifactId>solr-core</artifactId>
-      <version>4.0.1040465</version>
+      <version>4.0.1162474</version>
+      <exclusions>
+         <exclusion>
+		      <groupId>org.slf4j</groupId>
+		      <artifactId>slf4j-api</artifactId>
+         </exclusion>
+         <exclusion>
+		      <groupId>org.slf4j</groupId>
+		      <artifactId>slf4j-jdk14</artifactId>
+         </exclusion>
+      </exclusions>
      </dependency>
      <!-- json library used by solr when faceting -->
      <dependency>
        <groupId>org.apache.solr</groupId>
        <artifactId>solr-noggit</artifactId>
-       <version>4.0.1040465</version>
-     </dependency>
-     <dependency>
-       <groupId>org.apache.zookeeper</groupId>
-       <artifactId>zookeeper</artifactId>
-       <version>3.3.2</version>
+       <version>4.0.1162474</version>
      </dependency>
      <dependency>
       <groupId>javax.servlet</groupId>

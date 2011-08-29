@@ -32,7 +32,6 @@ import org.xml.sax.SAXException;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -152,16 +151,16 @@ public class MultiMasterSolrClient implements SolrServerService {
     // deployFile(coreConfigDir,"schema.xml");
     ClassLoader contextClassloader = Thread.currentThread().getContextClassLoader();
     Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
-    InputStream schemaStream = null;
-    InputStream configStream = null;
+    ClosableInputSource schemaSource = null;
+    ClosableInputSource configSource = null;
     try {
       NakamuraSolrResourceLoader loader = new NakamuraSolrResourceLoader(solrHome, this
           .getClass().getClassLoader());
       coreContainer = new CoreContainer(loader);
-      configStream = getStream(configLocation);
-      schemaStream = getStream(schemaLocation);
-      SolrConfig config = new NakamuraSolrConfig(loader, configLocation, configStream);
-      IndexSchema schema = new IndexSchema(config, null, schemaStream);
+      configSource = getStream(configLocation);
+      schemaSource = getStream(schemaLocation);
+      SolrConfig config = new NakamuraSolrConfig(loader, configLocation, configSource);
+      IndexSchema schema = new IndexSchema(config, null, schemaSource);
       nakamuraCore = new SolrCore("nakamura", coreDir.getAbsolutePath(), config, schema,
           null);
       coreContainer.register("nakamura", nakamuraCore, false);
@@ -170,8 +169,8 @@ public class MultiMasterSolrClient implements SolrServerService {
           coreContainer.getCoreNames());
     } finally {
       Thread.currentThread().setContextClassLoader(contextClassloader);
-      safeClose(schemaStream);
-      safeClose(configStream);
+      safeClose(schemaSource);
+      safeClose(configSource);
     }
 
     if (multiMasterProperties == null) {
@@ -181,10 +180,10 @@ public class MultiMasterSolrClient implements SolrServerService {
     }
   }
 
-  private void safeClose(InputStream stream) {
-    if (stream != null) {
+  private void safeClose(ClosableInputSource source) {
+    if (source != null) {
       try {
-        stream.close();
+        source.close();
       } catch (IOException e) {
         LOGGER.debug(e.getMessage(), e);
       }
@@ -269,14 +268,14 @@ public class MultiMasterSolrClient implements SolrServerService {
     return logConfiguration;
   }
 
-  private InputStream getStream(String name) throws FileNotFoundException {
+  private ClosableInputSource getStream(String name) throws IOException {
     if (name.contains(":")) {
       // try a URL
       try {
         URL u = new URL(name);
         InputStream in = u.openStream();
         if (in != null) {
-          return in;
+          return new ClosableInputSource(in);
         }
       } catch (IOException e) {
         LOGGER.debug(e.getMessage(), e);
@@ -285,10 +284,15 @@ public class MultiMasterSolrClient implements SolrServerService {
     // try a file
     File f = new File(name);
     if (f.exists()) {
-      return new FileInputStream(f);
+      return new ClosableInputSource(new FileInputStream(f));
     } else {
-      // try classpath
-      return this.getClass().getResourceAsStream(name);
+        // try classpath
+        InputStream in = this.getClass().getClassLoader().getResourceAsStream(name);
+        if ( in == null ) {
+            LOGGER.error("Failed to locate stream {}, tried URL, filesystem ", name);
+            throw new IOException("Failed to locate stream "+name+", tried URL, filesystem ");
+       }
+      return new ClosableInputSource(in);
     }
   }
 

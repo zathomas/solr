@@ -11,6 +11,7 @@ import org.apache.sling.commons.osgi.OsgiUtil;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer;
 import org.apache.solr.core.CoreContainer;
+import org.apache.solr.core.CoreDescriptor;
 import org.apache.solr.core.NakamuraSolrConfig;
 import org.apache.solr.core.SolrConfig;
 import org.apache.solr.core.SolrCore;
@@ -97,36 +98,37 @@ public class EmbeddedSolrClient implements SolrServerService {
     // deployFile(coreConfigDir,"schema.xml");
     ClassLoader contextClassloader = Thread.currentThread().getContextClassLoader();
     Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
-    InputStream schemaStream = null;
-    InputStream configStream = null;
+    ClosableInputSource schemaSource = null;
+    ClosableInputSource configSource = null;
     try {
       NakamuraSolrResourceLoader loader = new NakamuraSolrResourceLoader(solrHome, this
           .getClass().getClassLoader());
       coreContainer = new CoreContainer(loader);
-      configStream = getStream(configLocation);
-      schemaStream = getStream(schemaLocation);
+      configSource = getSource(configLocation);
+      schemaSource = getSource(schemaLocation);
       LOGGER.info("Configuring with Config {} schema {} ",configLocation, schemaLocation);
       SolrConfig config = new NakamuraSolrConfig(loader, configLocation,
-          configStream);
-      IndexSchema schema = new IndexSchema(config, schemaLocation, schemaStream);
-      nakamuraCore = new SolrCore("nakamura", coreDir.getAbsolutePath(), config, schema,
-          null);
+          configSource);
+      IndexSchema schema = new IndexSchema(config, schemaLocation, schemaSource);
+      CoreDescriptor coreDescriptor = new CoreDescriptor(coreContainer, "nakamura", coreDir.getAbsolutePath()+"nakamura");
+	nakamuraCore = new SolrCore("nakamura", coreDir.getAbsolutePath(), config, schema,
+          coreDescriptor);
       coreContainer.register("nakamura", nakamuraCore, false);
       server = new EmbeddedSolrServer(coreContainer, "nakamura");
       LoggerFactory.getLogger(this.getClass()).info("Contans cores {} ",
           coreContainer.getCoreNames());
     } finally {
       Thread.currentThread().setContextClassLoader(contextClassloader);
-      safeClose(schemaStream);
-      safeClose(configStream);
+      safeClose(schemaSource);
+      safeClose(configSource);
     }
 
   }
 
-  private void safeClose(InputStream stream) {
-    if ( stream != null ) {
+  private void safeClose(ClosableInputSource source) {
+    if ( source != null ) {
       try {
-        stream.close();
+    	  source.close();
       } catch ( IOException e ){
         LOGGER.debug(e.getMessage(),e);
       }
@@ -147,14 +149,15 @@ public class EmbeddedSolrClient implements SolrServerService {
     return logConfiguration;
   }
 
-  private InputStream getStream(String name) throws IOException {
+  private ClosableInputSource getSource(String name) throws IOException {
     if (name.contains(":")) {
       // try a URL
       try {
         URL u = new URL(name);
         InputStream in = u.openStream();
         if (in != null) {
-          return in;
+        	
+          return new ClosableInputSource(in);
         }
       } catch (IOException e) {
         LOGGER.debug(e.getMessage(), e);
@@ -163,7 +166,7 @@ public class EmbeddedSolrClient implements SolrServerService {
     // try a file
     File f = new File(name);
     if (f.exists()) {
-      return new FileInputStream(f);
+      return new ClosableInputSource(new FileInputStream(f));
     } else {
       // try classpath
       InputStream in = this.getClass().getClassLoader().getResourceAsStream(name);
@@ -171,7 +174,7 @@ public class EmbeddedSolrClient implements SolrServerService {
         LOGGER.error("Failed to locate stream {}, tried URL, filesystem ", name);
         throw new IOException("Failed to locate stream "+name+", tried URL, filesystem ");
       }
-      return null;
+      return new ClosableInputSource(in);
     }
   }
 
