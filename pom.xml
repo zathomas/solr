@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.sakaiproject.nakamura</groupId>
   <artifactId>org.sakaiproject.nakamura.solr</artifactId>
@@ -12,9 +13,9 @@
     <maven.test.redirectTestOutputToFile>true</maven.test.redirectTestOutputToFile>
   </properties>
   <scm>
-    <connection>scm:git:git://github.com/ieb/solr.git</connection>
-    <developerConnection>scm:git:git@github.com:ieb/solr.git</developerConnection>
-    <url>http://github.com/ieb/solr/</url>
+    <connection>scm:git:git://github.com/sakaiproject/solr.git</connection>
+    <developerConnection>scm:git:git@github.com:sakaiproject/solr.git</developerConnection>
+    <url>http://github.com/sakaiproject/solr/</url>
   </scm>
   <profiles>
     <profile>
@@ -43,7 +44,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-release-plugin</artifactId>
-        <version>2.2</version>
+        <version>2.2.1</version>
         <configuration>
            <goals>deploy</goals>
         </configuration>
@@ -349,50 +350,51 @@
 <!-- D I S T R I B U T I O N M A N A G E M E N T -->
 <!-- ====================================================================== -->
   <distributionManagement>
-    <downloadUrl>http://www2.caret.cam.ac.uk/maven2/</downloadUrl>
-    <snapshotRepository>
-       <uniqueVersion>false</uniqueVersion>
-       <id>caret-maven-snapshots-scp</id>
-       <name>Caret snapshot Repo</name>
-       <url>scp://catnep.caret.cam.ac.uk/home/www2/htdocs/maven2dev</url>
-       <layout>default</layout>
-    </snapshotRepository>
-    <repository>
-      <uniqueVersion>false</uniqueVersion>
-      <id>caret-maven2-scp</id>
-      <name>Caret maven2 repository</name>
-      <url>scp://catnep.caret.cam.ac.uk/home/www2/htdocs/maven2</url>
-      <layout>default</layout>
-    </repository>
-    <site>
-      <id>caret-site</id>
-      <name>Caret release Site</name>
-      <url>scp://catnep.caret.cam.ac.uk/home/www2/htdocs/release/nakamura/${project.version}</url>
-    </site>
+    <downloadUrl>http://source.sakaiproject.org/maven2/</downloadUrl>
+      <snapshotRepository>
+        <uniqueVersion>false</uniqueVersion>
+        <id>sakai-maven-snapshots-scp</id>
+        <name>Sakai snapshot Repo</name>
+        <url>scp://source.sakaiproject.org/var/www/html/maven2-snapshots</url>
+        <layout>default</layout>
+      </snapshotRepository>
+      <repository>
+        <uniqueVersion>false</uniqueVersion>
+        <id>sakai-maven2-scp</id>
+        <name>Sakai maven2 repository</name>
+        <url>scp://source.sakaiproject.org/var/www/html/maven2</url>
+        <layout>default</layout>
+      </repository>
+      <site>
+        <id>sakai-site</id>
+        <name>Sakai release Site</name>
+        <url>scp://source.sakaiproject.org/var/www/html/release/nakamura/${project.version}</url>
+      </site>
   </distributionManagement>
   <repositories>
     <repository>
-      <id>caret-releases</id>
-      <name>Caret Releases</name>
+      <id>sakai-maven</id>
+      <name>Sakai Maven Repo</name>
+      <layout>default</layout>
+      <url>http://source.sakaiproject.org/maven2</url>
       <releases>
-        <enabled>true</enabled>
+       <enabled>true</enabled>
       </releases>
       <snapshots>
         <enabled>false</enabled>
       </snapshots>
-      <url>http://www2.caret.cam.ac.uk/maven2/</url>
     </repository>
     <repository>
-      <id>sakai-releases</id>
-      <name>Sakai Releases</name>
+      <id>sakai-maven2-snapshots</id>
+      <name>Sakai Maven Repo</name>
+      <layout>default</layout>
+      <url>http://source.sakaiproject.org/maven2-snapshots</url>
       <releases>
-        <enabled>true</enabled>
+        <enabled>false</enabled>
       </releases>
       <snapshots>
-        <enabled>false</enabled>
+        <enabled>true</enabled>
       </snapshots>
-      <url>http://source.sakaiproject.org/maven2/</url>
     </repository>
   </repositories>
-
 </project>
