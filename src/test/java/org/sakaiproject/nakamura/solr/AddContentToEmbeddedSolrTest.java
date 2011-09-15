@@ -30,6 +30,7 @@ import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.event.Event;
+import org.osgi.service.event.EventAdmin;
 import org.sakaiproject.nakamura.api.lite.ClientPoolException;
 import org.sakaiproject.nakamura.api.lite.StorageClientException;
 import org.sakaiproject.nakamura.api.lite.accesscontrol.AccessDeniedException;
@@ -75,6 +76,8 @@ public class AddContentToEmbeddedSolrTest {
   private ConfigurationAdmin configurationAdmin;
   @Mock
   private Configuration configuration;
+  @Mock
+  private EventAdmin eventAdmin;
 
   private EmbeddedSolrClient embeddedSolrClient;
   private ContentEventListener contentEventListener;
@@ -114,6 +117,7 @@ public class AddContentToEmbeddedSolrTest {
     contentEventListener.repository = repository;
     contentEventListener.sparseRepository = sparseRepository.getRepository();
     contentEventListener.solrServerService = embeddedSolrClient;
+    contentEventListener.eventAdmin = eventAdmin;
     Map<String, Object> properties = new HashMap<String, Object>();
     contentEventListener.activate(properties);
   }
