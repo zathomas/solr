@@ -448,7 +448,7 @@
    <field name="resourceType" type="string" indexed="true" stored="true" termVectors="true" />
    <field name="someother" type="string" indexed="true" stored="true" multiValued="true" /> 
    <field name="sakai.group" type="string" indexed="true" stored="true" /> 
-   <field name="content" type="text" indexed="true" stored="false" termVectors="true" termPositions="true" termOffsets="true" />
+   <field name="content" type="text" indexed="true" stored="false" multiValued="true" termVectors="true" termPositions="true" termOffsets="true" />
    <field name="_createdBy" type="string" indexed="true" stored="false" />
    <field name="_created" type="long" indexed="true" stored="true" />
    <field name="_lastModifiedBy" type="string" indexed="true" stored="false" /> 
