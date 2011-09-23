@@ -16,8 +16,12 @@ import org.apache.sling.commons.osgi.OsgiUtil;
 import org.apache.sling.jcr.api.SlingRepository;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.request.AbstractUpdateRequest;
+import org.apache.solr.client.solrj.request.UpdateRequest;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrInputDocument;
+import org.apache.solr.common.params.UpdateParams;
+import org.apache.solr.update.UpdateHandler;
 import org.osgi.service.event.Event;
 import org.osgi.service.event.EventAdmin;
 import org.osgi.service.event.EventConstants;
@@ -69,6 +73,22 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
       "org/apache/sling/api/resource/Resource/*" }, propertyPrivate = true)
   static final String TOPICS = EventConstants.EVENT_TOPIC;
 
+  /**
+   * Near real time enables soft commit to the index. You must also lower the
+   * TTL, and tune the batch size to eliminate delays. If this is enabled all
+   * documents are added to the index with a soft commit and will be available
+   * in the index immediately. Documents still go through the queue to avoid
+   * all the threading issues that crippled Sakai 2 search updates, but the
+   * dwell time in the queue is greatly reduced. Be warned, that if running in
+   * a cluster extra work will have to be done to ensure that soft commits are
+   * propagated appropriately throughout the cluster. Also you will need to
+   * enable soft commits in the solrconfig.xml for NRT to work... which is why
+   * its disabled by default.
+   */
+  @Property(boolValue=false)
+  private static final String PROP_NEAR_REAL_TIME = "near-real-time";
+
+
   private static final Logger LOGGER = LoggerFactory
       .getLogger(ContentEventListener.class);
 
@@ -77,6 +97,9 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   private static final Integer DEFAULT_BATCHED_INDEX_SIZE = 100;
   
   private static final Long DEFAULT_BATCH_DELAY = 5000L;
+
+
+private static final boolean DEFAULT_NEAR_REAL_TIME = false;
 
   @Reference
   protected SolrServerService solrServerService;
@@ -143,11 +166,14 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
 
   private long batchStart;
 
+  private boolean nearRealTime;
+
   @Activate
   protected void activate(Map<String, Object> properties) throws RepositoryException,
       IOException, ClientPoolException, StorageClientException, AccessDeniedException {
     session = repository.loginAdministrative(null);
     sparseSession = sparseRepository.loginAdministrative();
+    nearRealTime = OsgiUtil.toBoolean(properties.get(PROP_NEAR_REAL_TIME), DEFAULT_NEAR_REAL_TIME);
     batchedIndexSize = OsgiUtil.toInteger(properties.get(BATCHED_INDEX_SIZE),
         DEFAULT_BATCHED_INDEX_SIZE);
     
@@ -371,11 +397,12 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
                   }
                   docs = contentIndexHandler.getDocuments(
                       repositorySession, event);
+                  
                   if (service != null) {
                     if (docs != null && docs.size() > 0) {
                       LOGGER.debug("Adding Docs {} ", docs);
                       service.add(docs);
-                      needsCommit = true;
+                      needsCommit = true;                    	  
                     }
                   }
                 } catch ( Throwable t ) {
@@ -398,8 +425,15 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
           if (needsCommit) {
             LOGGER.info("Processed {} events in a batch, max {}, TTL {} ", new Object[]{ events.size(),
                 batchedIndexSize, getBatchTTL()});
-            service.commit(false, false);
-            eventAdmin.postEvent(new Event("org/sakaiproject/nakamura/solr/COMMIT", new Hashtable()));
+            if ( nearRealTime ) {
+            	UpdateRequest updateRequest = new UpdateRequest();
+            	updateRequest.setAction( AbstractUpdateRequest.ACTION.COMMIT, false, false);
+            	updateRequest.setParam(UpdateParams.SOFT_COMMIT, "true");
+            	updateRequest.process(service);
+            } else {
+            	service.commit(false, false);
+                eventAdmin.postEvent(new Event("org/sakaiproject/nakamura/solr/COMMIT", new Hashtable()));
+            }
           }
           commit();
         } catch (SolrServerException e) {
