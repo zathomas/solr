@@ -38,6 +38,72 @@
         </plugins>
       </build>
     </profile>
+    <profile>
+      <id>license</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>com.mycila.maven-license-plugin</groupId>
+            <artifactId>maven-license-plugin</artifactId>
+            <version>1.9.0</version>
+            <configuration>
+              <basedir>${basedir}</basedir>
+              <encoding>UTF-8</encoding>
+              <header>src/main/resources/header.txt</header>
+              <quiet>false</quiet>
+              <failIfMissing>true</failIfMissing>
+              <aggregate>false</aggregate>
+                <includes>
+                  <include>src/main/**/*.java</include>
+                  <include>src/test/**/*.java</include>
+                  <include>src/main/**/*.css</include>
+                  <include>src/main/**/*.htm</include>
+                  <include>src/main/**/*.html</include>
+                  <include>src/main/**/*.js</include>
+                </includes>
+                <excludes>
+                  <exclude>bin/**</exclude>
+                  <exclude>src/main/resources/**</exclude>
+                  <exclude>src/test/resources/**</exclude>
+                  <exclude>target/**</exclude>
+                  <exclude>m2-target/**</exclude>
+                  <exclude>COMMITTERS</exclude>
+                  <exclude>CONTRIBUTING</exclude>
+                  <exclude>LICENSE</exclude>
+                  <exclude>NOTICE</exclude>
+                  <exclude>**/.*</exclude>
+                  <exclude>**/*.bat</exclude>
+                  <exclude>**/*.doc</exclude>
+                  <exclude>**/*.json</exclude>
+                  <exclude>**/*.md</exclude>
+                  <exclude>**/*.properties</exclude>
+                  <exclude>**/*.sh</exclude>
+                  <exclude>**/*.txt</exclude>
+                  <exclude>**/*.textile</exclude>
+                  <exclude>**/*.xml</exclude>
+                </excludes>
+                <properties>
+                  <holder>Sakai Foundation</holder>
+                  <holder.acronym>SF</holder.acronym>
+                  <apache.license.version>2.0</apache.license.version>
+                </properties>
+                  <strictCheck>true</strictCheck>
+                  <useDefaultExcludes>true</useDefaultExcludes>
+                  <useDefaultMapping>true</useDefaultMapping>                  
+            </configuration>
+            <executions>
+              <execution>
+                <id>check-headers</id>
+                  <phase>verify</phase>
+                  <goals>
+                    <goal>check</goal>
+                  </goals>
+               </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
   <build>
     <plugins>
