@@ -55,7 +55,7 @@
               <aggregate>false</aggregate>
                 <includes>
                   <include>src/main/**/*.java</include>
-                  <include>src/main/test/**/*.java</include>
+                  <include>src/test/**/*.java</include>
                   <include>src/main/**/*.css</include>
                   <include>src/main/**/*.htm</include>
                   <include>src/main/**/*.html</include>
@@ -64,6 +64,7 @@
                 <excludes>
                   <exclude>bin/**</exclude>
                   <exclude>src/main/resources/**</exclude>
+                  <exclude>src/test/resources/**</exclude>
                   <exclude>target/**</exclude>
                   <exclude>m2-target/**</exclude>
                   <exclude>COMMITTERS</exclude>
@@ -74,6 +75,7 @@
                   <exclude>**/*.bat</exclude>
                   <exclude>**/*.doc</exclude>
                   <exclude>**/*.json</exclude>
+                  <exclude>**/*.md</exclude>
                   <exclude>**/*.properties</exclude>
                   <exclude>**/*.sh</exclude>
                   <exclude>**/*.txt</exclude>
