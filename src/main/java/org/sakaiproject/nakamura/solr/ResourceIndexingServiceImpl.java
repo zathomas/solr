@@ -79,7 +79,7 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
   protected TopicIndexer contentIndexer;
   private String[] topics;
 
-  private Map<String, IndexingHandler> indexers = Maps.newConcurrentHashMap();
+  private Map<String, IndexingHandler> indexers = Maps.newConcurrentMap();
   private IndexingHandler defaultHandler;
   @SuppressWarnings("unchecked")
   private Map<String, String> ignoreCache = new LRUMap(500);
