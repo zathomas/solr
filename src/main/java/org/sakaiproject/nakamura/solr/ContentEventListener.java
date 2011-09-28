@@ -112,7 +112,7 @@ private static final boolean DEFAULT_NEAR_REAL_TIME = false;
   @Reference
   protected EventAdmin eventAdmin;
 
-  private Map<String, Collection<IndexingHandler>> handlers = Maps.newConcurrentHashMap();
+  private Map<String, Collection<IndexingHandler>> handlers = Maps.newConcurrentMap();
 
   private Session session;
 
