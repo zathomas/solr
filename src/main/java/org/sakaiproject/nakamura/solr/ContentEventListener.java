@@ -107,7 +107,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
   @Reference
   protected EventAdmin eventAdmin;
 
-  private Map<String, Collection<IndexingHandler>> handlers = Maps.newConcurrentHashMap();
+  private Map<String, Collection<IndexingHandler>> handlers = Maps.newConcurrentMap();
 
   private Session session;
 
