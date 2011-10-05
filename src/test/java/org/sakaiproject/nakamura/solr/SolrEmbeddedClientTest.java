@@ -55,6 +55,7 @@ public class SolrEmbeddedClientTest {
 
     
     embeddedSolrClient.activate(componentContext);
+    embeddedSolrClient.enable(null);
     Assert.assertNotNull(embeddedSolrClient.getSolrHome());
     Assert.assertNotNull(embeddedSolrClient.getServer());
     embeddedSolrClient.deactivate(componentContext);

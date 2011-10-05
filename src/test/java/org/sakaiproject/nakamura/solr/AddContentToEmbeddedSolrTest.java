@@ -16,6 +16,7 @@ import org.osgi.service.event.Event;
 import org.sakaiproject.nakamura.api.lite.ClientPoolException;
 import org.sakaiproject.nakamura.api.lite.StorageClientException;
 import org.sakaiproject.nakamura.api.lite.accesscontrol.AccessDeniedException;
+import org.sakaiproject.nakamura.api.solr.SolrClient;
 import org.sakaiproject.nakamura.lite.BaseMemoryRepository;
 import org.sakaiproject.nakamura.solr.handlers.FileResourceTypeHandler;
 import org.xml.sax.SAXException;
@@ -60,6 +61,7 @@ public class AddContentToEmbeddedSolrTest {
   private Configuration configuration;
 
   private EmbeddedSolrClient embeddedSolrClient;
+  private SolrServerServiceImpl solrServerServiceImpl;
   private ContentEventListener contentEventListener;
   private BaseMemoryRepository sparseRepository;
 
@@ -82,7 +84,10 @@ public class AddContentToEmbeddedSolrTest {
         configurationAdmin.createFactoryConfiguration(
             "org.apache.sling.commons.log.LogManager.factory.config", null)).thenReturn(
         configuration);
-    embeddedSolrClient.activate(componentContext);
+    embeddedSolrClient.activate(componentContext);    
+    solrServerServiceImpl = new SolrServerServiceImpl();
+    solrServerServiceImpl.bind(embeddedSolrClient);
+    solrServerServiceImpl.activate(ImmutableMap.of(SolrClient.CLIENT_NAME, (Object)SolrClient.EMBEDDED));
     sparseRepository = new BaseMemoryRepository();
   }
 
@@ -96,7 +101,7 @@ public class AddContentToEmbeddedSolrTest {
     contentEventListener = new ContentEventListener();
     contentEventListener.repository = repository;
     contentEventListener.sparseRepository = sparseRepository.getRepository();
-    contentEventListener.solrServerService = embeddedSolrClient;
+    contentEventListener.solrServerService = solrServerServiceImpl;
     Map<String, Object> properties = new HashMap<String, Object>();
     contentEventListener.activate(properties);
   }
