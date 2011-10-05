@@ -37,7 +37,7 @@ public class SolrServerServiceImpl implements SolrServerService, SolrClientListe
 	@Property(value=SolrClient.EMBEDDED, description="embedded|remote|multi|other")
 	private static final String SOLR_IMPL = "solr-impl";
 	private SolrClient server;
-	private Map<String, SolrClient> servers = Maps.newConcurrentHashMap();
+	private Map<String, SolrClient> servers = Maps.newConcurrentMap();
 	
 	
 
