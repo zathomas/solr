@@ -36,6 +36,7 @@ public interface Indexer {
    *          the handler to be registered.
    */
   void addHandler(String key, IndexingHandler handler);
+  void addImmediateHandler(String key, ImmediateIndexingHandler handler);
 
   /**
    * Remove the handler registration, if that registration exists.
@@ -46,5 +47,5 @@ public interface Indexer {
    *          the handler
    */
   void removeHandler(String key, IndexingHandler handler);
-
+  void removeImmediateHandler(String key, ImmediateIndexingHandler handler);
 }

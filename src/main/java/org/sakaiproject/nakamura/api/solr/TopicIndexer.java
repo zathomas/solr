@@ -32,6 +32,7 @@ public interface TopicIndexer {
    *          the handler being registered.
    */
   void addHandler(String topic, IndexingHandler handler);
+  void addImmediateHandler(String topic, ImmediateIndexingHandler handler);
 
   /**
    * Remove a handler.
@@ -42,5 +43,6 @@ public interface TopicIndexer {
    *          the handler that was registered.
    */
   void removeHandler(String topic, IndexingHandler handler);
+  void removeImmediateHandler(String topic, ImmediateIndexingHandler handler);
 
 }
