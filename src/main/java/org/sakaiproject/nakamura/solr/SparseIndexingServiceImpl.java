@@ -107,22 +107,22 @@ public class SparseIndexingServiceImpl implements IndexingHandler, ResourceIndex
 
   public Collection<SolrInputDocument> getImmediateDocuments(
       RepositorySession repositorySession, Event event) {
-    return getDocuments(repositorySession, event, immediateIndexers);
+    return getDocuments(repositorySession, event, this.immediateIndexers);
   }
 
   public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession,
       Event event) {
-    return getDocuments(repositorySession, event, indexers);
+    return getDocuments(repositorySession, event, this.indexers);
   }
 
   private Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession,
-      Event event, Map<String, ? extends IndexingHandler> indexers) {
+      Event event, Map<String, ? extends IndexingHandler> indexingHandlers) {
     String topic = event.getTopic();
     if (topic.endsWith(StoreListener.UPDATED_TOPIC) || topic.endsWith(StoreListener.ADDED_TOPIC)) {
       String path = (String) event.getProperty(FIELD_PATH);
       if (!ignore(path)) {
         LOGGER.debug("Update action at path:{}  require on {} ", path, event);
-        IndexingHandler handler = getHandler(repositorySession, path, indexers);
+        IndexingHandler handler = getHandler(repositorySession, path, indexingHandlers);
         Collection<SolrInputDocument> docs = null;
         if (handler instanceof ImmediateIndexingHandler) {
           docs = ((ImmediateIndexingHandler) handler).getImmediateDocuments(repositorySession, event);
