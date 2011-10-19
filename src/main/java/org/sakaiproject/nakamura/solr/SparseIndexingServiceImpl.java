@@ -60,8 +60,7 @@ import java.util.Set;
 @Component(immediate = true, metatype = true)
 @Service(value = ResourceIndexingService.class)
 @Properties( value={@Property(name="type", value="sparse" )})
-public class SparseIndexingServiceImpl implements IndexingHandler,
-    ImmediateIndexingHandler, ResourceIndexingService {
+public class SparseIndexingServiceImpl implements IndexingHandler, ResourceIndexingService {
 
   private static final String PROP_TOPICS = "resource.topics";
   private static final Logger LOGGER = LoggerFactory
@@ -93,7 +92,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     defaultHandler = new DefaultSparseHandler();
     topics = OsgiUtil.toStringArray(properties.get(PROP_TOPICS), StoreListener.DEFAULT_TOPICS);
     for (String topic : topics) {
-      contentIndexer.addImmediateHandler(topic, this);
+//      contentIndexer.addImmediateHandler(topic, this);
       contentIndexer.addHandler(topic, this);
     }
   }
@@ -101,29 +100,29 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
   @Deactivate
   public void deactivate(Map<String, Object> properties) {
     for (String topic : topics) {
-      contentIndexer.removeImmediateHandler(topic, this);
+//      contentIndexer.removeImmediateHandler(topic, this);
       contentIndexer.removeHandler(topic, this);
     }
   }
 
   public Collection<SolrInputDocument> getImmediateDocuments(
       RepositorySession repositorySession, Event event) {
-    return getDocuments(repositorySession, event, immediateIndexers);
+    return getDocuments(repositorySession, event, this.immediateIndexers);
   }
 
   public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession,
       Event event) {
-    return getDocuments(repositorySession, event, indexers);
+    return getDocuments(repositorySession, event, this.indexers);
   }
 
   private Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession,
-      Event event, Map<String, ? extends IndexingHandler> indexers) {
+      Event event, Map<String, ? extends IndexingHandler> indexingHandlers) {
     String topic = event.getTopic();
     if (topic.endsWith(StoreListener.UPDATED_TOPIC) || topic.endsWith(StoreListener.ADDED_TOPIC)) {
       String path = (String) event.getProperty(FIELD_PATH);
       if (!ignore(path)) {
         LOGGER.debug("Update action at path:{}  require on {} ", path, event);
-        IndexingHandler handler = getHandler(repositorySession, path, indexers);
+        IndexingHandler handler = getHandler(repositorySession, path, indexingHandlers);
         Collection<SolrInputDocument> docs = null;
         if (handler instanceof ImmediateIndexingHandler) {
           docs = ((ImmediateIndexingHandler) handler).getImmediateDocuments(repositorySession, event);
