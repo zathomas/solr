@@ -60,8 +60,7 @@ import java.util.Set;
 @Component(immediate = true, metatype = true)
 @Service(value = ResourceIndexingService.class)
 @Properties( value={@Property(name="type", value="sparse" )})
-public class SparseIndexingServiceImpl implements IndexingHandler,
-    ImmediateIndexingHandler, ResourceIndexingService {
+public class SparseIndexingServiceImpl implements IndexingHandler, ResourceIndexingService {
 
   private static final String PROP_TOPICS = "resource.topics";
   private static final Logger LOGGER = LoggerFactory
@@ -93,7 +92,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     defaultHandler = new DefaultSparseHandler();
     topics = OsgiUtil.toStringArray(properties.get(PROP_TOPICS), StoreListener.DEFAULT_TOPICS);
     for (String topic : topics) {
-      contentIndexer.addImmediateHandler(topic, this);
+//      contentIndexer.addImmediateHandler(topic, this);
       contentIndexer.addHandler(topic, this);
     }
   }
@@ -101,7 +100,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
   @Deactivate
   public void deactivate(Map<String, Object> properties) {
     for (String topic : topics) {
-      contentIndexer.removeImmediateHandler(topic, this);
+//      contentIndexer.removeImmediateHandler(topic, this);
       contentIndexer.removeHandler(topic, this);
     }
   }
