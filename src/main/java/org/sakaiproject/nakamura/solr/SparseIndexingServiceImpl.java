@@ -60,7 +60,8 @@ import java.util.Set;
 @Component(immediate = true, metatype = true)
 @Service(value = ResourceIndexingService.class)
 @Properties( value={@Property(name="type", value="sparse" )})
-public class SparseIndexingServiceImpl implements IndexingHandler, ResourceIndexingService {
+public class SparseIndexingServiceImpl implements IndexingHandler,
+    ImmediateIndexingHandler, ResourceIndexingService {
 
   private static final String PROP_TOPICS = "resource.topics";
   private static final Logger LOGGER = LoggerFactory
@@ -77,6 +78,8 @@ public class SparseIndexingServiceImpl implements IndexingHandler, ResourceIndex
   private IndexingHandler defaultHandler;
   @SuppressWarnings("unchecked")
   private Map<String, String> ignoreCache = new LRUMap(500);
+  @SuppressWarnings("unchecked")
+  private Map<String, String> immediateIgnoreCache = new LRUMap(500);
   private static final String[] BLACK_LISTED = {
       "/dev/",
       "/devwidgets/",
@@ -92,7 +95,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler, ResourceIndex
     defaultHandler = new DefaultSparseHandler();
     topics = OsgiUtil.toStringArray(properties.get(PROP_TOPICS), StoreListener.DEFAULT_TOPICS);
     for (String topic : topics) {
-//      contentIndexer.addImmediateHandler(topic, this);
+      contentIndexer.addImmediateHandler(topic, this);
       contentIndexer.addHandler(topic, this);
     }
   }
@@ -100,54 +103,73 @@ public class SparseIndexingServiceImpl implements IndexingHandler, ResourceIndex
   @Deactivate
   public void deactivate(Map<String, Object> properties) {
     for (String topic : topics) {
-//      contentIndexer.removeImmediateHandler(topic, this);
+      contentIndexer.removeImmediateHandler(topic, this);
       contentIndexer.removeHandler(topic, this);
     }
   }
 
   public Collection<SolrInputDocument> getImmediateDocuments(
       RepositorySession repositorySession, Event event) {
-    return getDocuments(repositorySession, event, this.immediateIndexers);
-  }
-
-  public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession,
-      Event event) {
-    return getDocuments(repositorySession, event, this.indexers);
-  }
-
-  private Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession,
-      Event event, Map<String, ? extends IndexingHandler> indexingHandlers) {
     String topic = event.getTopic();
     if (topic.endsWith(StoreListener.UPDATED_TOPIC) || topic.endsWith(StoreListener.ADDED_TOPIC)) {
       String path = (String) event.getProperty(FIELD_PATH);
-      if (!ignore(path)) {
-        LOGGER.debug("Update action at path:{}  require on {} ", path, event);
-        IndexingHandler handler = getHandler(repositorySession, path, indexingHandlers);
-        Collection<SolrInputDocument> docs = null;
-        if (handler instanceof ImmediateIndexingHandler) {
-          docs = ((ImmediateIndexingHandler) handler).getImmediateDocuments(repositorySession, event);
-        } else {
-          docs = ((IndexingHandler) handler).getDocuments(repositorySession, event);
-        }
+
+      if (!ignore(path) && !immediateIgnoreCache.containsKey(path)) {
+       ImmediateIndexingHandler handler = getHandler(repositorySession, path,
+            this.immediateIndexers, this.immediateIgnoreCache);
+
         List<SolrInputDocument> outputDocs = Lists.newArrayList();
+        Collection<SolrInputDocument> docs = handler.getImmediateDocuments(repositorySession, event);
         for (SolrInputDocument doc : docs) {
-          for (String name : doc.getFieldNames()) {
-            // loop through the fields of the returned docs to make sure they contain
-            // atleast 1 field that is not a system property. this is not to filter out
-            // any system properties but to make sure there are more things to index than
-            // just system properties.
-            if (!SYSTEM_PROPERTIES.contains(name)) {
-              try {
-                addDefaultFields(doc, repositorySession);
-                outputDocs.add(doc);
-              } catch (StorageClientException e) {
-                LOGGER.warn("Failed to index {} cause: {} ", path, e.getMessage());
-              }
-              break;
+          // check the fields of the returned docs to make sure they contain atleast 1
+          // field that is not a system property. this is not to filter out any system
+          // properties but to make sure there are more things to index than just system
+          // properties.
+          if (!SYSTEM_PROPERTIES.containsAll(doc.getFieldNames())) {
+            try {
+              addDefaultFields(doc, repositorySession);
+              outputDocs.add(doc);
+            } catch (StorageClientException e) {
+              LOGGER.warn("Failed to index {} cause: {} ", path, e.getMessage());
             }
           }
         }
         return outputDocs;
+      } else {
+        LOGGER.debug("Ignored action at path:{}  require on {} ", path, event);
+      }
+    } else {
+      LOGGER.debug("No update action require on {} ", event);
+    }
+    return ImmutableList.of();
+  }
+
+  public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession,
+      Event event) {
+    String topic = event.getTopic();
+    if (topic.endsWith(StoreListener.UPDATED_TOPIC) || topic.endsWith(StoreListener.ADDED_TOPIC)) {
+      String path = (String) event.getProperty(FIELD_PATH);
+
+      if (!ignore(path) && !ignoreCache.containsKey(path)) {
+        IndexingHandler handler = getHandler(repositorySession, path, this.indexers, this.ignoreCache);
+
+        List<SolrInputDocument> outputDocs = Lists.newArrayList();
+        Collection<SolrInputDocument> docs = handler.getDocuments(repositorySession, event);
+        for (SolrInputDocument doc : docs) {
+          // check the fields of the returned docs to make sure they contain atleast 1
+          // field that is not a system property. this is not to filter out any system
+          // properties but to make sure there are more things to index than just system
+          // properties.
+          if (!SYSTEM_PROPERTIES.containsAll(doc.getFieldNames())) {
+            try {
+              addDefaultFields(doc, repositorySession);
+              outputDocs.add(doc);
+            } catch (StorageClientException e) {
+              LOGGER.warn("Failed to index {} cause: {} ", path, e.getMessage());
+            }
+          }
+          return outputDocs;
+        }
       } else {
         LOGGER.debug("Ignored action at path:{}  require on {} ", path, event);
       }
@@ -196,9 +218,9 @@ public class SparseIndexingServiceImpl implements IndexingHandler, ResourceIndex
     return accessControlManager.findPrincipals(zone, path,Permissions.CAN_READ.getPermission(), true);
   }
 
-
-  private IndexingHandler getHandler(RepositorySession repositorySession, String path,
-      Map<String, ? extends IndexingHandler> indexers) {
+  @SuppressWarnings("unchecked")
+  private <T> T getHandler(RepositorySession repositorySession, String path,
+      Map<String, T> indexers, Map<String, String> ignoreCache) {
     org.sakaiproject.nakamura.api.lite.Session sparseSession = repositorySession
         .adaptTo(org.sakaiproject.nakamura.api.lite.Session.class);
 
@@ -212,13 +234,13 @@ public class SparseIndexingServiceImpl implements IndexingHandler, ResourceIndex
             if (c != null) {
               if (c.hasProperty("sling:resourceType")) {
                 String resourceType = (String) c.getProperty("sling:resourceType");
-                IndexingHandler handler = indexers.get(resourceType);
+                T handler = indexers.get(resourceType);
                 if (handler != null) {
                   LOGGER.debug("Handler of type {} found {} for {} from {} ", new Object[] {
                       resourceType, handler, path, indexers });
                   return handler;
                 } else {
-                  LOGGER.debug("Ignored {} no handler for {} ", path, resourceType);
+                  LOGGER.debug("Ignoring {}; no handler", path);
                   ignoreCache.put(path, path);
                 }
               } else {
@@ -237,32 +259,22 @@ public class SparseIndexingServiceImpl implements IndexingHandler, ResourceIndex
       }
       path = Utils.getParentPath(path);
     }
-    return defaultHandler;
+    return (T) defaultHandler;
   }
 
   public Collection<String> getDeleteQueries(RepositorySession repositorySession,
       Event event) {
-    return getDeleteQueries(repositorySession, event, indexers);
-  }
-
-  public Collection<String> getImmediateDeleteQueries(RepositorySession repositorySession,
-      Event event) {
-    return getDeleteQueries(repositorySession, event, immediateIndexers);
-  }
-
-  private Collection<String> getDeleteQueries(RepositorySession repositorySession,
-      Event event, Map<String, ? extends IndexingHandler> indexers) {
     String topic = event.getTopic();
     if (topic.endsWith(StoreListener.DELETE_TOPIC)) {
       String path = (String) event.getProperty(FIELD_PATH);
-      if (!ignore(path)) {
+      if (!ignore(path) && !ignoreCache.containsKey(path)) {
         String resourceType = (String) event.getProperty("resourceType");
 
         IndexingHandler handler = null;
         if (resourceType != null) {
-          handler = getHandler(resourceType, indexers);
+          handler = getHandler(resourceType, this.indexers);
         } else {
-          handler = getHandler(repositorySession, path, indexers);
+          handler = getHandler(repositorySession, path, this.indexers, this.ignoreCache);
         }
         return handler.getDeleteQueries(repositorySession, event);
       }
@@ -272,10 +284,35 @@ public class SparseIndexingServiceImpl implements IndexingHandler, ResourceIndex
     return ImmutableList.of();
   }
 
-  private IndexingHandler getHandler(String resourceType, Map<String, ? extends IndexingHandler> indexers) {
-    IndexingHandler handler = indexers.get(resourceType);
+  public Collection<String> getImmediateDeleteQueries(RepositorySession repositorySession,
+      Event event) {
+    String topic = event.getTopic();
+    if (topic.endsWith(StoreListener.DELETE_TOPIC)) {
+      String path = (String) event.getProperty(FIELD_PATH);
+      if (!ignore(path) && !immediateIgnoreCache.containsKey(path)) {
+        String resourceType = (String) event.getProperty("resourceType");
+
+        ImmediateIndexingHandler handler = null;
+        if (resourceType != null) {
+          handler = (ImmediateIndexingHandler) getHandler(resourceType,
+              this.immediateIndexers);
+        } else {
+          handler = (ImmediateIndexingHandler) getHandler(repositorySession, path,
+              this.immediateIndexers, this.immediateIgnoreCache);
+        }
+        return handler.getImmediateDeleteQueries(repositorySession, event);
+      }
+    } else {
+      LOGGER.debug("No delete action require on {} ", event);
+    }
+    return ImmutableList.of();
+  }
+
+  @SuppressWarnings("unchecked")
+  private <T> T getHandler(String resourceType, Map<String, T> indexers) {
+    T handler = indexers.get(resourceType);
     if (handler == null) {
-      handler = defaultHandler;
+      handler = (T) defaultHandler;
     }
     return handler;
   }
@@ -283,13 +320,19 @@ public class SparseIndexingServiceImpl implements IndexingHandler, ResourceIndex
   public void addHandler(String key, IndexingHandler handler) {
     LOGGER.debug("Added New Indexer as {} at {} ",  key,
         handler);
-    indexers.put( key, handler);
+    indexers.put(key, handler);
+    // reset what is ignored so the newly registered handler has a chance to respond to
+    // any previously unhandled indexing
+    ignoreCache.clear();
   }
 
   public void addImmediateHandler(String key, ImmediateIndexingHandler handler) {
     LOGGER.debug("Added New Immediate Indexer as {} at {} ",  key,
         handler);
-    immediateIndexers.put( key, handler);
+    immediateIndexers.put(key, handler);
+    // reset what is ignored so the newly registered handler has a chance to respond to
+    // any previously unhandled indexing
+    immediateIgnoreCache.clear();
   }
 
   public void removeHandler(String key, IndexingHandler handler) {

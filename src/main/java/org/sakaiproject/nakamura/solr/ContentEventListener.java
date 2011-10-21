@@ -257,7 +257,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     if (immediateContentIdx != null && immediateContentIdx.size() > 0) {
       SolrServer service = solrServerService.getUpdateServer();
       try {
-        boolean needsCommit = processIndexing(service, event, immediateContentIdx);
+        boolean needsCommit = processImmediateIndexing(service, event, immediateContentIdx);
         if (needsCommit) {
           UpdateRequest updateRequest = new UpdateRequest();
           updateRequest.setAction(AbstractUpdateRequest.ACTION.COMMIT, false, false);
@@ -386,7 +386,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
             LOGGER.info("Processed {} events in a batch, max {}, TTL {} ", new Object[]{ events.size(),
                 batchedIndexSize, getBatchTTL()});
             service.commit(false, false);
-            eventAdmin.postEvent(new Event("org/sakaiproject/nakamura/solr/COMMIT", new Hashtable()));
+            eventAdmin.postEvent(new Event("org/sakaiproject/nakamura/solr/COMMIT", null));
           }
           commit();
         } catch (SolrServerException e) {
@@ -421,73 +421,85 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
     }
   }
 
-  private boolean processIndexing(SolrServer service, Event event,
-      Collection<? extends IndexingHandler> contentIndexHandlers) {
+  private boolean processImmediateIndexing(SolrServer service, Event event,
+      Collection<ImmediateIndexingHandler> contentIndexHandlers) {
     boolean needsCommit = false;
+
+    if (contentIndexHandlers != null) {
+      for (ImmediateIndexingHandler contentIndexHandler : contentIndexHandlers) {
+        Collection<String> deletes = contentIndexHandler.getImmediateDeleteQueries(repositorySession, event);
+        Collection<SolrInputDocument> adds = contentIndexHandler.getImmediateDocuments(repositorySession, event);
+        needsCommit |= processingHelper(service, event, contentIndexHandler, deletes, adds);
+      }
+    }
+
+    return needsCommit;
+  }
+
+  private boolean processIndexing(SolrServer service, Event event,
+      Collection<IndexingHandler> contentIndexHandlers) {
+    boolean needsCommit = false;
+
     if (contentIndexHandlers != null) {
       for (IndexingHandler contentIndexHandler : contentIndexHandlers) {
-        Collection<SolrInputDocument> docs = null;
-        /**
-         * getDeleteQueries and getDocuments must be called for all registered
-         * indexing handlers. There is the chance that updating a document
-         * will cause another document to be deleted and this is the only way the
-         * indexing handler has to interact in that.
-         * e.g. sakai:excludeSearch gets set to true; that doc needs to be
-         *      deleted.
-         */
-        String path = "undefined";
-        try {
-          path = (String) event.getProperty("path");
-          LOGGER.debug("Got Handler {} for event {} {}", new Object[] {
-              contentIndexHandler, event, path });
+        Collection<String> deletes = contentIndexHandler.getDeleteQueries(repositorySession, event);
+        Collection<SolrInputDocument> adds = contentIndexHandler.getDocuments(repositorySession, event);
+        needsCommit |= processingHelper(service, event, contentIndexHandler, deletes, adds);
+      }
+    }
 
-          Collection<String> deleteQueries = null;
-          if (contentIndexHandler instanceof ImmediateIndexingHandler) {
-            deleteQueries = ((ImmediateIndexingHandler) contentIndexHandler)
-                .getImmediateDeleteQueries(repositorySession, event);
-          } else {
-            deleteQueries = contentIndexHandler.getDeleteQueries(
-              repositorySession, event);
-          }
-          for (String deleteQuery : deleteQueries) {
-            if (service != null) {
-              LOGGER.debug("Added delete Query {} ", deleteQuery);
-              try {
-                service.deleteByQuery(deleteQuery);
-                needsCommit = true;
-              } catch (SolrServerException e) {
-                LOGGER.info(" Failed to delete {}  cause :{}", deleteQuery,
-                    e.getMessage());
-              }
-            }
-          }
+    return needsCommit;
+  }
 
-          if (contentIndexHandler instanceof ImmediateIndexingHandler) {
-            docs = ((ImmediateIndexingHandler) contentIndexHandler)
-                .getImmediateDocuments(repositorySession, event);
-          } else {
-            docs = contentIndexHandler.getDocuments(repositorySession, event);
+  private boolean processingHelper(SolrServer service, Event event,
+      Object contentIndexHandler, Collection<String> deleteQueries,
+      Collection<SolrInputDocument> docs) {
+    boolean needsCommit = false;
+    /**
+     * getDeleteQueries and getDocuments must be called for all registered
+     * indexing handlers. There is the chance that updating a document
+     * will cause another document to be deleted and this is the only way the
+     * indexing handler has to interact in that.
+     * e.g. sakai:excludeSearch gets set to true; that doc needs to be
+     *      deleted.
+     */
+    String path = "undefined";
+    try {
+      path = (String) event.getProperty("path");
+      LOGGER.debug("Got Handler {} for event {} {}", new Object[] {
+          contentIndexHandler, event, path });
+
+      for (String deleteQuery : deleteQueries) {
+        if (service != null) {
+          LOGGER.debug("Added delete Query {} ", deleteQuery);
+          try {
+            service.deleteByQuery(deleteQuery);
+            needsCommit = true;
+          } catch (SolrServerException e) {
+            LOGGER.info(" Failed to delete {}  cause :{}", deleteQuery,
+                e.getMessage());
           }
-          if (service != null) {
-            if (docs != null && docs.size() > 0) {
-              LOGGER.debug("Adding Docs {} ", docs);
-              service.add(docs);
-              needsCommit = true;
-            }
-          }
-        } catch ( Throwable t ) {
-          LOGGER
-              .error(
-                  "{} Failed to process event {}, {} cause follows, event ignored for " +
-                  "this processor, please fix issue to remove this message (dont delete " +
-                  "this log message from the code) ",
-                  new Object[] { contentIndexHandler, event, path });
-          LOGGER.error(t.getMessage(),t);
-          if (docs != null ) {
-            for (SolrInputDocument d : docs) {
-              LOGGER.error("Failed Doc {} ",d);
-            }
-          }
+        }
+      }
+
+      if (service != null) {
+        if (docs != null && docs.size() > 0) {
+          LOGGER.debug("Adding Docs {} ", docs);
+          service.add(docs);
+          needsCommit = true;
+        }
+      }
+    } catch ( Throwable t ) {
+      LOGGER
+          .error(
+              "{} Failed to process event {}, {} cause follows, event ignored for " +
+              "this processor, please fix issue to remove this message (dont delete " +
+              "this log message from the code) ",
+              new Object[] { contentIndexHandler, event, path });
+      LOGGER.error(t.getMessage(),t);
+      if (docs != null ) {
+        for (SolrInputDocument d : docs) {
+          LOGGER.error("Failed Doc {} ",d);
         }
       }
     }
