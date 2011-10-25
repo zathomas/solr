@@ -380,7 +380,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
             Event event = ev.getValue();
             String topic = event.getTopic();
             Collection<IndexingHandler> contentIndexHandlers = handlers.get(topic);
-            needsCommit = processIndexing(service, event, contentIndexHandlers);
+            needsCommit |= processIndexing(service, event, contentIndexHandlers);
           }
           if (needsCommit) {
             LOGGER.info("Processed {} events in a batch, max {}, TTL {} ", new Object[]{ events.size(),
