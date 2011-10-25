@@ -25,7 +25,7 @@ import java.util.Collection;
 /**
  *
  */
-public interface ImmediateIndexingHandler extends IndexingHandler {
+public interface ImmediateIndexingHandler {
 
   /**
    * Get a Collection of documents to be added to the index based on the event.

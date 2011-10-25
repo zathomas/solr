@@ -179,7 +179,6 @@
               org.sakaiproject.nakamura.api.solr.*,
               org.apache.lucene.analysis,
               org.apache.lucene.index;-split-package:=merge-first,
-              org.apache.lucene.queryParser,
               org.apache.lucene.queryparser.classic,
               org.apache.lucene.search;-split-package:=merge-first,
               org.apache.lucene.util,
@@ -224,7 +223,6 @@
                lucene-misc,
                lucene-queries,
                lucene-spatial,
-               lucene-spellchecker,
                zookeeper,
                velocity,
                oro,
@@ -464,4 +462,17 @@
       </snapshots>
     </repository>
   </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>apache-plugin-snapshot</id>
+      <name>Apache Snapshots Plugins</name>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+      <url>http://repository.apache.org/snapshots/</url>
+    </pluginRepository>
+  </pluginRepositories>
 </project>

@@ -117,40 +117,22 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
 
   public Collection<SolrInputDocument> getImmediateDocuments(
       RepositorySession repositorySession, Event event) {
-    return getDocuments(repositorySession, event, immediateIndexers);
-  }
-
-  public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession,
-      Event event) {
-    return getDocuments(repositorySession, event, indexers);
-  }
-
-  private Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession,
-      Event event, Map<String, ? extends IndexingHandler> indexers) {
     String topic = event.getTopic();
     if (topic.endsWith(CHANGED_TOPIC) || topic.endsWith(ADDED_TOPIC)) {
       String path = (String) event.getProperty("path");
       LOGGER.debug("Update action at path:{}  require on {} ", path, event);
-      
+
       if (!ignore(path)) {
-        IndexingHandler handler = getHandler(repositorySession, path, indexers);
-        Collection<SolrInputDocument> docs = null;
-        if (handler instanceof ImmediateIndexingHandler) {
-          docs = ((ImmediateIndexingHandler) handler).getImmediateDocuments(repositorySession, event);
-        } else {
-          docs = handler.getDocuments(repositorySession, event);
-        }
+        ImmediateIndexingHandler handler = getHandler(repositorySession, path, this.immediateIndexers);
+        Collection<SolrInputDocument> docs = handler.getImmediateDocuments(repositorySession, event);
         List<SolrInputDocument> outputDocs = Lists.newArrayList();
         for (SolrInputDocument doc : docs) {
-          for (String name : doc.getFieldNames()) {
-            if (!SYSTEM_PROPERTIES.contains(name)) {
-              try {
-                addDefaultFields(doc);
-                outputDocs.add(doc);
-              } catch (RepositoryException e) {
-                LOGGER.error("Failed to index {} cause: {} ",path, e.getMessage());
-              }
-              break;
+          if (!SYSTEM_PROPERTIES.containsAll(doc.getFieldNames())) {
+            try {
+              addDefaultFields(doc);
+              outputDocs.add(doc);
+            } catch (RepositoryException e) {
+              LOGGER.error("Failed to index {} cause: {} ",path, e.getMessage());
             }
           }
         }
@@ -161,7 +143,36 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
     }
     return ImmutableList.of();
   }
-  
+
+  public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession,
+      Event event) {
+    String topic = event.getTopic();
+    if (topic.endsWith(CHANGED_TOPIC) || topic.endsWith(ADDED_TOPIC)) {
+      String path = (String) event.getProperty("path");
+      LOGGER.debug("Update action at path:{}  require on {} ", path, event);
+      
+      if (!ignore(path)) {
+        IndexingHandler handler = getHandler(repositorySession, path, indexers);
+        Collection<SolrInputDocument> docs = handler.getDocuments(repositorySession, event);
+        List<SolrInputDocument> outputDocs = Lists.newArrayList();
+        for (SolrInputDocument doc : docs) {
+          if (!SYSTEM_PROPERTIES.containsAll(doc.getFieldNames())) {
+            try {
+              addDefaultFields(doc);
+              outputDocs.add(doc);
+            } catch (RepositoryException e) {
+              LOGGER.error("Failed to index {} cause: {} ",path, e.getMessage());
+            }
+          }
+        }
+        return outputDocs;
+      }
+    } else {
+      LOGGER.debug("No update action require on {} ", event);
+    }
+    return ImmutableList.of();
+  }
+
   private void addDefaultFields(SolrInputDocument doc) throws RepositoryException {
     Node node = (Node) doc.getFieldValue(_DOC_SOURCE_OBJECT);
     if ( node != null ) {
@@ -192,8 +203,9 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
   }
 
 
-  private IndexingHandler getHandler(RepositorySession repositorySession, String path,
-      Map<String, ? extends IndexingHandler> indexers) {
+  @SuppressWarnings("unchecked")
+  private <T> T getHandler(RepositorySession repositorySession, String path,
+      Map<String, T> indexers) {
     Session session = repositorySession.adaptTo(Session.class);
 
     while (!isRoot(path)) {
@@ -208,7 +220,7 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
               if (n.hasProperty("sling:resourceType")) {
                 resourceType = n.getProperty("sling:resourceType").getString();
               }
-              IndexingHandler handler = indexers.get(resourceType);
+              T handler = indexers.get(resourceType);
               if (handler != null) {
                 LOGGER.debug("Handler of type {} found {} for {} from {} ", new Object[] {
                     resourceType, handler, path, indexers });
@@ -225,7 +237,7 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
       }
       path = Utils.getParentPath(path);
     }
-    return defaultHandler;
+    return (T) defaultHandler;
   }
 
   /**
@@ -262,16 +274,20 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
 
   public Collection<String> getImmediateDeleteQueries(
       RepositorySession repositorySession, Event event) {
-    return getDeleteQueries(repositorySession, event, immediateIndexers);
+    String topic = event.getTopic();
+    if (topic.endsWith(REMOVE_TOPIC)) {
+      String path = (String) event.getProperty("path");
+      if (!ignore(path)) {
+        return getHandler(repositorySession, path, immediateIndexers).getImmediateDeleteQueries(repositorySession, event);
+      }
+    } else {
+      LOGGER.debug("No delete action require on {} ", event);
+    }
+    return ImmutableList.of();
   }
 
   public Collection<String> getDeleteQueries(RepositorySession repositorySession,
       Event event) {
-    return getDeleteQueries(repositorySession, event, indexers);
-  }
-
-  private Collection<String> getDeleteQueries(RepositorySession repositorySession,
-      Event event, Map<String, ? extends IndexingHandler> indexers) {
     String topic = event.getTopic();
     if (topic.endsWith(REMOVE_TOPIC)) {
       String path = (String) event.getProperty("path");
