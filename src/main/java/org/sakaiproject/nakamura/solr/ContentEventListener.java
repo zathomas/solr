@@ -28,8 +28,7 @@ import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
-import org.apache.felix.scr.annotations.Services;
-import org.apache.sling.commons.osgi.OsgiUtil;
+import org.apache.sling.commons.osgi.PropertiesUtil;
 import org.apache.sling.jcr.api.SlingRepository;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.SolrServerException;
@@ -76,8 +75,7 @@ import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 
 @Component(immediate = true, metatype = true)
-@Services(value = { @Service(value = EventHandler.class),
-    @Service(value = TopicIndexer.class) })
+@Service({EventHandler.class, TopicIndexer.class})
 public class ContentEventListener implements EventHandler, TopicIndexer, Runnable {
 
   @Property(intValue = 200)
@@ -170,10 +168,10 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
       IOException, ClientPoolException, StorageClientException, AccessDeniedException {
     session = repository.loginAdministrative(null);
     sparseSession = sparseRepository.loginAdministrative();
-    batchedIndexSize = OsgiUtil.toInteger(properties.get(BATCHED_INDEX_SIZE),
+    batchedIndexSize = PropertiesUtil.toInteger(properties.get(BATCHED_INDEX_SIZE),
         DEFAULT_BATCHED_INDEX_SIZE);
     
-    batchDelay = OsgiUtil.toLong(properties.get(BATCH_DELAY), DEFAULT_BATCH_DELAY);
+    batchDelay = PropertiesUtil.toLong(properties.get(BATCH_DELAY), DEFAULT_BATCH_DELAY);
 
     repositorySession = new RepositorySession() {
 
@@ -386,7 +384,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer, Runnabl
             LOGGER.info("Processed {} events in a batch, max {}, TTL {} ", new Object[]{ events.size(),
                 batchedIndexSize, getBatchTTL()});
             service.commit(false, false);
-            eventAdmin.postEvent(new Event("org/sakaiproject/nakamura/solr/COMMIT", null));
+            eventAdmin.postEvent(new Event("org/sakaiproject/nakamura/solr/COMMIT", (Map) null));
           }
           commit();
         } catch (SolrServerException e) {

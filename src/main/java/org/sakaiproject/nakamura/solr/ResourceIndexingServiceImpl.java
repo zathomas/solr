@@ -31,7 +31,7 @@ import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.sling.api.SlingConstants;
-import org.apache.sling.commons.osgi.OsgiUtil;
+import org.apache.sling.commons.osgi.PropertiesUtil;
 import org.apache.solr.common.SolrInputDocument;
 import org.osgi.service.event.Event;
 import org.sakaiproject.nakamura.api.solr.ImmediateIndexingHandler;
@@ -100,7 +100,7 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
   @Activate
   public void activate(Map<String, Object> properties) {
     defaultHandler = new DefaultResourceTypeHandler();
-    topics = OsgiUtil.toStringArray(properties.get(PROP_TOPICS), DEFAULT_TOPICS);
+    topics = PropertiesUtil.toStringArray(properties.get(PROP_TOPICS), DEFAULT_TOPICS);
     for (String topic : topics) {
       contentIndexer.addImmediateHandler(topic, this);
       contentIndexer.addHandler(topic, this);
