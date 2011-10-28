@@ -189,7 +189,6 @@ public class QueueManager implements Runnable {
 		while (running) {
 			RepositorySession repositorySession = null;
 			try {
-				repositorySession = getRepositorySession();
 				begin();
 				Event loadEvent = null;
 				try {
@@ -275,7 +274,9 @@ public class QueueManager implements Runnable {
 											"Got Handler {} for event {} {}",
 											new Object[] { contentIndexHandler,
 													event, path });
-
+									if ( repositorySession == null ) {
+										repositorySession = getRepositorySession();
+									}
 									for (String deleteQuery : contentIndexHandler
 											.getDeleteQueries(
 													repositorySession, event)) {
@@ -376,7 +377,9 @@ public class QueueManager implements Runnable {
 				}
 			} finally {
 				try {
-					repositorySession.logout();
+					if ( repositorySession != null ) {
+						repositorySession.logout();
+					}
 				} catch (Exception e) {
 					LOGGER.warn(e.getMessage(), e);
 				}

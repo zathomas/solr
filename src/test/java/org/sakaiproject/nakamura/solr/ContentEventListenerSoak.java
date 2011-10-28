@@ -96,7 +96,7 @@ public class ContentEventListenerSoak {
       int e = r.nextInt(10000);
       LOGGER.debug("Adding Events {} ",e);
       for (int i = 0; i < e; i++) {
-        int ttl = r.nextInt(10000);
+        int ttl = 45+r.nextInt(10000);
         Dictionary<String, Object> props = new Hashtable<String, Object>();
         props.put("evnumber", i);
         props.put("a nasty,key", "with a, nasty \n value");

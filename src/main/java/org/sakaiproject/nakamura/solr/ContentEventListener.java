@@ -188,8 +188,8 @@ public class ContentEventListener implements EventHandler, TopicIndexer,
 				for (QueueManager qm : queues) {
 					if (ttl < qm.batchDelay) {
 						if (q == null) {
-							LOGGER.info("Unable to satisfy TTL on event {} ",
-									event);
+							LOGGER.info("Unable to satisfy TTL of {} on event {} ",
+									ttl, event);
 						} else {
 							q.saveEvent(event);
 							q = null;
