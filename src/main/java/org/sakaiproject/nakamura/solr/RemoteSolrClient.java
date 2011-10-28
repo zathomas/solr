@@ -10,7 +10,6 @@ import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Service;
-import org.apache.sling.commons.osgi.OsgiUtil;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.impl.BinaryResponseParser;
 import org.apache.solr.client.solrj.impl.StreamingUpdateSolrServer;
@@ -79,30 +78,30 @@ public class RemoteSolrClient implements SolrClient {
 		if ( enabled ) {
 			return;
 		}
-		String url = OsgiUtil.toString(properties.get(PROP_SOLR_URL),
+		String url = Utils.toString(properties.get(PROP_SOLR_URL),
 				"http://localhost:8983/solr");
-		server = new StreamingUpdateSolrServer(url, OsgiUtil.toInteger(
-				properties.get(PROP_QUEUE_SIZE), 100), OsgiUtil.toInteger(
+		server = new StreamingUpdateSolrServer(url, Utils.toInt(
+				properties.get(PROP_QUEUE_SIZE), 100), Utils.toInt(
 				properties.get(PROP_THREAD_COUNT), 10));
-		server.setSoTimeout(OsgiUtil.toInteger(properties.get(PROP_SO_TIMEOUT),
+		server.setSoTimeout(Utils.toInt(properties.get(PROP_SO_TIMEOUT),
 				1000)); // socket
 						// read
 						// timeout
-		server.setConnectionTimeout(OsgiUtil.toInteger(
+		server.setConnectionTimeout(Utils.toInt(
 				properties.get(PROP_CONNECTION_TIMEOUT), 100));
-		server.setDefaultMaxConnectionsPerHost(OsgiUtil.toInteger(
+		server.setDefaultMaxConnectionsPerHost(Utils.toInt(
 				properties.get(PROP_MAX_CONNECTONS_PER_HOST), 100));
-		server.setMaxTotalConnections(OsgiUtil.toInteger(
+		server.setMaxTotalConnections(Utils.toInt(
 				properties.get(PROP_MAX_TOTAL_CONNECTONS), 100));
-		server.setFollowRedirects(OsgiUtil.toBoolean(
+		server.setFollowRedirects(Utils.toBoolean(
 				properties.get(PROP_FOLLOW), false)); // defaults
 														// to
 														// false
 		// allowCompression defaults to false.
 		// Server side must support gzip or deflate for this to have any effect.
-		server.setAllowCompression(OsgiUtil.toBoolean(
+		server.setAllowCompression(Utils.toBoolean(
 				properties.get(PROP_ALLOW_COMPRESSION), true));
-		server.setMaxRetries(OsgiUtil.toInteger(
+		server.setMaxRetries(Utils.toInt(
 				properties.get(PROP_MAX_RETRIES), 1)); // defaults
 														// to 0.
 														// > 1

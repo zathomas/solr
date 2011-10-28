@@ -60,7 +60,7 @@ public class QueueManager implements Runnable {
 	private BufferedReader eventReader;
 	private File currentInFile;
 	private Object waitingForFileLock = new Object();
-	private boolean running = true;
+	private boolean running = false;
 	private int lineNo;
 	private File currentFile;
 	private FileWriter eventWriter;
@@ -98,8 +98,6 @@ public class QueueManager implements Runnable {
 		this.batchedIndexSize = batchedIndexSize;
 		this.queueManagerDriver = queueManagerDriver;
 		loadPosition();
-		running = false;
-
 	}
 
 	public synchronized void start() {
@@ -338,12 +336,13 @@ public class QueueManager implements Runnable {
 							updateRequest.process(service);
 						} else {
 							service.commit(false, false);
+							Dictionary<String, Object> props = new Hashtable<String, Object>();
 							queueManagerDriver
 									.getEventAdmin()
 									.postEvent(
 											new Event(
 													"org/sakaiproject/nakamura/solr/COMMIT",
-													new Hashtable()));
+													props));
 						}
 					}
 					commit();

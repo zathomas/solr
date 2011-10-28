@@ -1,9 +1,9 @@
 package org.sakaiproject.nakamura.solr;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.collections.map.LRUMap;
 import org.apache.felix.scr.annotations.Activate;
@@ -13,7 +13,6 @@ import org.apache.felix.scr.annotations.Properties;
 import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
-import org.apache.sling.commons.osgi.OsgiUtil;
 import org.apache.solr.common.SolrInputDocument;
 import org.osgi.service.event.Event;
 import org.sakaiproject.nakamura.api.lite.Session;
@@ -34,10 +33,10 @@ import org.sakaiproject.nakamura.solr.handlers.DefaultSparseHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 @Component(immediate = true, metatype = true)
 @Service(value = ResourceIndexingService.class)
@@ -72,7 +71,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
   @Activate
   public void activate(Map<String, Object> properties) {
     defaultHandler = new DefaultSparseHandler();
-    topics = OsgiUtil.toStringArray(properties.get(PROP_TOPICS), StoreListener.DEFAULT_TOPICS);
+    topics = Utils.toStringArray(properties.get(PROP_TOPICS), StoreListener.DEFAULT_TOPICS);
     for (String topic : topics) {
       contentIndexer.addHandler(topic, this);
     }

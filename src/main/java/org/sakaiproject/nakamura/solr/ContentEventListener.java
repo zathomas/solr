@@ -17,7 +17,6 @@ import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.felix.scr.annotations.Services;
-import org.apache.sling.commons.osgi.OsgiUtil;
 import org.apache.sling.jcr.api.SlingRepository;
 import org.osgi.service.event.Event;
 import org.osgi.service.event.EventAdmin;
@@ -39,6 +38,13 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+/**
+ * Manages one or more queues storing events on disk so that those events can be
+ * replayed later against the solr index.
+ * 
+ * @author ieb
+ * 
+ */
 @Component(immediate = true, metatype = true)
 @Services(value = { @Service(value = EventHandler.class),
 		@Service(value = TopicIndexer.class) })
@@ -83,11 +89,15 @@ public class ContentEventListener implements EventHandler, TopicIndexer,
 
 	private static final String BATCH_DELAY = "batch-delay";
 
-	private static final Object PROP_QUEUE_CONFIG = "queue-config";
+	@Property(value={
+			"name=;batch-delay=5000;batched-index-size=100;near-real-time=false",
+			"name=high;batch-delay=50;batched-index-size=10;near-real-time=true"
+	})
+	private static final String PROP_QUEUE_CONFIG = "queue-config";
 
 	private static final String[] QUEUE_DEFAULT = {
-		QUEUE_NAME+"="+DEFAULT_QUEUE_NAME+";"+BATCH_DELAY+"="+DEFAULT_BATCH_DELAY+";"+BATCHED_INDEX_SIZE+"="+DEFAULT_BATCHED_INDEX_SIZE+";"+PROP_NEAR_REAL_TIME+"="+DEFAULT_NEAR_REAL_TIME,
-		QUEUE_NAME+"=high;"+BATCH_DELAY+"=50;"+BATCHED_INDEX_SIZE+"=10;"+PROP_NEAR_REAL_TIME+"=true"
+		"name=;batch-delay=5000;batched-index-size=100;near-real-time=false",
+		"name=high;batch-delay=50;batched-index-size=10;near-real-time=true"
 	};
 
 	@Reference
@@ -114,13 +124,16 @@ public class ContentEventListener implements EventHandler, TopicIndexer,
 	 */
 	private Object handlersLock = new Object();
 
+	/**
+	 * The queues orders smallest ttl first.
+	 */
 	private QueueManager[] queues = null;
 
 	@Activate
 	protected void activate(Map<String, Object> properties)
 			throws RepositoryException, IOException, ClientPoolException,
 			StorageClientException, AccessDeniedException {
-		String[] queuesConfig = OsgiUtil.toStringArray(properties.get(PROP_QUEUE_CONFIG),
+		String[] queuesConfig = Utils.toStringArray(properties.get(PROP_QUEUE_CONFIG),
 				QUEUE_DEFAULT);
 		Map<String, QueueManager> qm = Maps.newHashMap();
 		for (String queueConfig : queuesConfig) {
@@ -138,14 +151,14 @@ public class ContentEventListener implements EventHandler, TopicIndexer,
 				}
 			}
 			Map<String, String> config = b.build();
-			boolean nearRealTime = toBoolean(config.get(PROP_NEAR_REAL_TIME),
+			boolean nearRealTime = Utils.toBoolean(config.get(PROP_NEAR_REAL_TIME),
 					DEFAULT_NEAR_REAL_TIME);
-			int batchedIndexSize = toInt(config.get(BATCHED_INDEX_SIZE),
+			int batchedIndexSize = Utils.toInt(config.get(BATCHED_INDEX_SIZE),
 					DEFAULT_BATCHED_INDEX_SIZE);
 
-			long batchDelay = toLong(config.get(BATCH_DELAY),
+			long batchDelay = Utils.toLong(config.get(BATCH_DELAY),
 					DEFAULT_BATCH_DELAY);
-			String name = toString(config.get(QUEUE_NAME), DEFAULT_QUEUE_NAME);
+			String name = Utils.toString(config.get(QUEUE_NAME), DEFAULT_QUEUE_NAME);
 			qm.put(name, new QueueManager(this,
 					solrServerService.getSolrHome(), name, nearRealTime,
 					batchedIndexSize, batchDelay));
@@ -176,13 +189,17 @@ public class ContentEventListener implements EventHandler, TopicIndexer,
 		stopAll();
 	}
 
+	/**
+	 * Handles an event from OSGi and places it in the appropriate queue.
+	 * @see org.osgi.service.event.EventHandler#handleEvent(org.osgi.service.event.Event)
+	 */
 	public void handleEvent(Event event) {
 		String topic = event.getTopic();
 		LOGGER.debug("Got Event {} {} ", event, handlers);
 		Collection<IndexingHandler> contentIndexHandler = handlers.get(topic);
 		if (contentIndexHandler != null && contentIndexHandler.size() > 0) {
 			try {
-				int ttl = toInt(event.getProperty(TopicIndexer.TTL),
+				int ttl = Utils.toInt(event.getProperty(TopicIndexer.TTL),
 						Integer.MAX_VALUE);
 				QueueManager q = null;
 				for (QueueManager qm : queues) {
@@ -291,32 +308,5 @@ public class ContentEventListener implements EventHandler, TopicIndexer,
 		}
 	}
 
-	private String toString(String property, String defaultValue) {
-		if (property == null) {
-			return defaultValue;
-		}
-		return property;
-	}
-
-	private int toInt(Object property, int defaultValue) {
-		if (property == null) {
-			return defaultValue;
-		}
-		return Integer.parseInt(String.valueOf(property));
-	}
-
-	private long toLong(String property, long defaultValue) {
-		if (property == null) {
-			return defaultValue;
-		}
-		return Long.parseLong(String.valueOf(property));
-	}
-
-	private boolean toBoolean(String property, boolean defaultValue) {
-		if (property == null) {
-			return defaultValue;
-		}
-		return Boolean.parseBoolean(String.valueOf(property));
-	}
 
 }

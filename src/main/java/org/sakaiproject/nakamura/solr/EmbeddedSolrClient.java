@@ -19,7 +19,6 @@ import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
-import org.apache.sling.commons.osgi.OsgiUtil;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer;
 import org.apache.solr.core.CoreContainer;
@@ -87,9 +86,9 @@ public class EmbeddedSolrClient implements SolrClient {
 		if (enabled) {
 			return;
 		}
-		String schemaLocation = OsgiUtil.toString(
+		String schemaLocation = Utils.toString(
 				properties.get(PROP_SOLR_SCHEMA), "schema.xml");
-		String configLocation = OsgiUtil.toString(
+		String configLocation = Utils.toString(
 				properties.get(PROP_SOLR_CONFIG), "solrconfig.xml");
 		// Note that the following property could be set through JVM level
 		// arguments too

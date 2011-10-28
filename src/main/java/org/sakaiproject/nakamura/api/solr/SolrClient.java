@@ -10,11 +10,26 @@ import org.xml.sax.SAXException;
 
 public interface SolrClient {
 
+	/**
+	 * Name of the embedded client
+	 */
 	public static final String EMBEDDED = "embedded";
+	/**
+	 * Name of the remote client
+	 */
 	public static final String REMOTE = "remote";
+	/**
+	 * Name of the remote master local slave client.
+	 */
 	public static final String MULTI = "multi";
+	/**
+	 * The client name property.
+	 */
 	public static final String CLIENT_NAME = "client.name";
 
+	/**
+	 * @return the name of the client.
+	 */
 	String getName();
 
 	// this is not the same interface as SolrServerService to enable us to have
@@ -35,9 +50,19 @@ public interface SolrClient {
 	 */
 	String getSolrHome();
 
+	/**
+	 * Enable the client and set the Solr listener.
+	 * @param listener
+	 * @throws IOException
+	 * @throws ParserConfigurationException
+	 * @throws SAXException
+	 */
 	void enable(SolrClientListener listener) throws IOException,
 			ParserConfigurationException, SAXException;
 
+	/**
+	 * Disable the client.
+	 */
 	void disable();
 
 }
