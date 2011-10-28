@@ -171,6 +171,9 @@ public class ContentEventListener implements EventHandler, TopicIndexer,
 			}
 		});
 		queues = qmlist.toArray(new QueueManager[qmlist.size()]);
+		if ( queues.length == 0 ) {
+			LOGGER.error("No indexing queues have been defined, the index will not be written to ");
+		}
 
 		startAll();
 

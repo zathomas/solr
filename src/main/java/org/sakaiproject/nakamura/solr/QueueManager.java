@@ -98,6 +98,7 @@ public class QueueManager implements Runnable {
 		this.batchedIndexSize = batchedIndexSize;
 		this.queueManagerDriver = queueManagerDriver;
 		loadPosition();
+		running = false;
 	}
 
 	public synchronized void start() {
@@ -106,6 +107,8 @@ public class QueueManager implements Runnable {
 			queueDispatcher.setName("IndexQueueManager" + queueName);
 			queueDispatcher.start();
 			running = true;
+		} else {
+			LOGGER.warn("QueueManager {} already running ",queueName);
 		}
 	}
 
@@ -119,6 +122,7 @@ public class QueueManager implements Runnable {
 	}
 
 	public void run() {
+		LOGGER.info("Queue Manager Starting {} ",queueName);
 		batchedEventRun();
 	}
 
@@ -384,6 +388,7 @@ public class QueueManager implements Runnable {
 				}
 			}
 		}
+		LOGGER.info("QueueManager {} shutting down ",queueName);
 	}
 
 	private RepositorySession getRepositorySession()
