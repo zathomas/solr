@@ -89,7 +89,7 @@ public class ContentEventListenerTest {
       }
       Thread.sleep(100);
     }
-    contentEventListener.closeWriter();
+    contentEventListener.closeAll();
     LOGGER.info("Done adding Events ");
 
     contentEventListener.removeHandler("/test/topic", h);
@@ -97,7 +97,7 @@ public class ContentEventListenerTest {
     contentEventListener.deactivate(properties);
 
     LOGGER.info("Waiting for worker thread ");
-    contentEventListener.getQueueDispatcher().join();
+    contentEventListener.joinAll();
     LOGGER.info("Joined worker thread");
   }
 

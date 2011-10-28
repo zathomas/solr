@@ -110,7 +110,7 @@ public class AddContentToEmbeddedSolrTest {
       InterruptedException {
     Map<String, Object> properties = new HashMap<String, Object>();
     contentEventListener.deactivate(properties);
-    contentEventListener.getQueueDispatcher().join();
+    contentEventListener.joinAll();
   }
 
   private void bindContentNode(String path, String nodeTypeName, String resourceType,
@@ -272,7 +272,7 @@ public class AddContentToEmbeddedSolrTest {
 
     fileResourceTypeHandler.deactivate(ImmutableMap.of("test", new Object()));
     resourceIndexingServiceImpl.deactivate(ImmutableMap.of("test", new Object()));
-    contentEventListener.getQueueDispatcher().join();
+    contentEventListener.joinAll();
 
     stopEmbeddedSolr();
 

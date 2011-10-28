@@ -15,4 +15,6 @@ public interface RepositorySession {
    * @return the adapted repository session.
    */
   <T> T adaptTo(Class<T> c);
+  
+  void logout();
 }

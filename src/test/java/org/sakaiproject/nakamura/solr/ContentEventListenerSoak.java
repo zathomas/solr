@@ -13,6 +13,7 @@ import org.sakaiproject.nakamura.api.lite.accesscontrol.AccessDeniedException;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
 import org.sakaiproject.nakamura.api.solr.RepositorySession;
 import org.sakaiproject.nakamura.api.solr.SolrServerService;
+import org.sakaiproject.nakamura.api.solr.TopicIndexer;
 import org.sakaiproject.nakamura.lite.BaseMemoryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,17 +96,19 @@ public class ContentEventListenerSoak {
       int e = r.nextInt(10000);
       LOGGER.debug("Adding Events {} ",e);
       for (int i = 0; i < e; i++) {
+        int ttl = r.nextInt(10000);
         Dictionary<String, Object> props = new Hashtable<String, Object>();
         props.put("evnumber", i);
         props.put("a nasty,key", "with a, nasty \n value");
         props.put("path", "path/"+j+"/"+i);
+        props.put(TopicIndexer.TTL, ttl);
         contentEventListener.handleEvent(new Event("test/topic", props));
       }
       int t = r.nextInt(10000);
       LOGGER.info("Sleeping {} ",t);
       Thread.sleep(t);
     }
-    contentEventListener.closeWriter();
+    contentEventListener.closeAll();
     LOGGER.info("Done adding Events ");
 
     contentEventListener.removeHandler("/test/topic", h);
@@ -113,7 +116,7 @@ public class ContentEventListenerSoak {
     contentEventListener.deactivate(properties);
 
     LOGGER.info("Waiting for worker thread ");
-    contentEventListener.getQueueDispatcher().join();
+    contentEventListener.joinAll();
     LOGGER.info("Joined worker thread");
   }
 
