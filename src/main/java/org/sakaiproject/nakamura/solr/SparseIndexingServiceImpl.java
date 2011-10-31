@@ -241,7 +241,9 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
                   return handler;
                 } else {
                   LOGGER.debug("Ignoring {}; no handler", path);
-                  ignoreCache.put(path, path);
+                  synchronized (this) {
+                    ignoreCache.put(path, path);
+                  }
                 }
               } else {
                 LOGGER.debug("Ignored {} no resource type ",path);
