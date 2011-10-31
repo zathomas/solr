@@ -27,7 +27,7 @@ import org.apache.felix.scr.annotations.Deactivate;
 import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
-import org.apache.sling.commons.osgi.OsgiUtil;
+import org.apache.sling.commons.osgi.PropertiesUtil;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer;
 import org.apache.solr.client.solrj.impl.BinaryResponseParser;
@@ -212,7 +212,7 @@ public class MultiMasterSolrClient implements SolrServerService {
    * @return
    */
   private Map<String, Object> getMultiMasterProperties(Map<String, Object> properties) {
-    String clusterConfigMode = OsgiUtil.toString(
+    String clusterConfigMode = PropertiesUtil.toString(
         properties.get(PROP_CLUSTER_CONFIG_MODE), "election");
     if ("embedded".equals(clusterConfigMode)) {
       return null;
@@ -237,30 +237,30 @@ public class MultiMasterSolrClient implements SolrServerService {
 
   private SolrServer createUpdateServer(Map<String, Object> properties)
       throws MalformedURLException {
-    String url = OsgiUtil.toString(properties.get(PROP_SOLR_URL),
+    String url = PropertiesUtil.toString(properties.get(PROP_SOLR_URL),
         "http://localhost:8983/solr");
 
     StreamingUpdateSolrServer remoteServer = new StreamingUpdateSolrServer(url,
-        OsgiUtil.toInteger(properties.get(PROP_QUEUE_SIZE), 100), OsgiUtil.toInteger(
+        PropertiesUtil.toInteger(properties.get(PROP_QUEUE_SIZE), 100), PropertiesUtil.toInteger(
             properties.get(PROP_THREAD_COUNT), 10));
-    remoteServer.setSoTimeout(OsgiUtil.toInteger(properties.get(PROP_SO_TIMEOUT), 1000)); // socket
+    remoteServer.setSoTimeout(PropertiesUtil.toInteger(properties.get(PROP_SO_TIMEOUT), 1000)); // socket
     // read
     // timeout
-    remoteServer.setConnectionTimeout(OsgiUtil.toInteger(
+    remoteServer.setConnectionTimeout(PropertiesUtil.toInteger(
         properties.get(PROP_CONNECTION_TIMEOUT), 100));
-    remoteServer.setDefaultMaxConnectionsPerHost(OsgiUtil.toInteger(
+    remoteServer.setDefaultMaxConnectionsPerHost(PropertiesUtil.toInteger(
         properties.get(PROP_MAX_CONNECTONS_PER_HOST), 100));
-    remoteServer.setMaxTotalConnections(OsgiUtil.toInteger(
+    remoteServer.setMaxTotalConnections(PropertiesUtil.toInteger(
         properties.get(PROP_MAX_TOTAL_CONNECTONS), 100));
     remoteServer
-        .setFollowRedirects(OsgiUtil.toBoolean(properties.get(PROP_FOLLOW), false)); // defaults
+        .setFollowRedirects(PropertiesUtil.toBoolean(properties.get(PROP_FOLLOW), false)); // defaults
     // to
     // false
     // allowCompression defaults to false.
     // Server side must support gzip or deflate for this to have any effect.
-    remoteServer.setAllowCompression(OsgiUtil.toBoolean(
+    remoteServer.setAllowCompression(PropertiesUtil.toBoolean(
         properties.get(PROP_ALLOW_COMPRESSION), true));
-    remoteServer.setMaxRetries(OsgiUtil.toInteger(properties.get(PROP_MAX_RETRIES), 1)); // defaults
+    remoteServer.setMaxRetries(PropertiesUtil.toInteger(properties.get(PROP_MAX_RETRIES), 1)); // defaults
     // to 0.
     // > 1
     // not
