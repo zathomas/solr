@@ -112,4 +112,11 @@ public class Utils {
         return defaultArray;
     }
 
+	public static int defaultMax(int ttl) {
+		if (ttl <= 0) {
+			return Integer.MAX_VALUE;
+		}
+		return ttl;
+	}
+
 }

@@ -28,6 +28,7 @@ import org.apache.sling.api.SlingConstants;
 import org.apache.solr.common.SolrInputDocument;
 import org.osgi.service.event.Event;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
+import org.sakaiproject.nakamura.api.solr.QoSIndexHandler;
 import org.sakaiproject.nakamura.api.solr.RepositorySession;
 import org.sakaiproject.nakamura.api.solr.ResourceIndexingService;
 import org.sakaiproject.nakamura.api.solr.TopicIndexer;
@@ -44,7 +45,7 @@ import com.google.common.collect.Maps;
 @Service(value = ResourceIndexingService.class)
 @Properties( value={@Property(name="type", value="jcr" )})
 public class ResourceIndexingServiceImpl implements IndexingHandler,
-    ResourceIndexingService {
+    ResourceIndexingService, QoSIndexHandler {
 
   private static final String PROP_TOPICS = "resource.topics";
   private static final String REMOVE_TOPIC = "REMOVED";
@@ -154,6 +155,22 @@ public class ResourceIndexingServiceImpl implements IndexingHandler,
     } 
   }
 
+
+	@Override
+	public int getTtl(Event event) {
+		int ttl = Integer.MAX_VALUE;
+		for (IndexingHandler ih : indexers.values()) {
+			if (ih instanceof QoSIndexHandler) {
+				ttl = Math.min(ttl,
+						Utils.defaultMax(((QoSIndexHandler) ih).getTtl(event)));
+			}
+		}
+		if ( defaultHandler instanceof QoSIndexHandler ) {
+			ttl = Math.min(ttl,
+					Utils.defaultMax(((QoSIndexHandler) defaultHandler).getTtl(event)));
+		}
+		return ttl;
+	}
 
   private IndexingHandler getHandler(RepositorySession repositorySession, String path) {
     Session session = repositorySession.adaptTo(Session.class);

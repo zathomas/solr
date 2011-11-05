@@ -26,6 +26,7 @@ import org.sakaiproject.nakamura.api.lite.accesscontrol.Security;
 import org.sakaiproject.nakamura.api.lite.content.Content;
 import org.sakaiproject.nakamura.api.lite.content.ContentManager;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
+import org.sakaiproject.nakamura.api.solr.QoSIndexHandler;
 import org.sakaiproject.nakamura.api.solr.RepositorySession;
 import org.sakaiproject.nakamura.api.solr.ResourceIndexingService;
 import org.sakaiproject.nakamura.api.solr.TopicIndexer;
@@ -42,7 +43,7 @@ import com.google.common.collect.Maps;
 @Service(value = ResourceIndexingService.class)
 @Properties( value={@Property(name="type", value="sparse" )})
 public class SparseIndexingServiceImpl implements IndexingHandler,
-    ResourceIndexingService {
+    ResourceIndexingService, QoSIndexHandler {
 
   private static final String PROP_TOPICS = "resource.topics";
   private static final Logger LOGGER = LoggerFactory
@@ -223,6 +224,23 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     }
     return ImmutableList.of();
   }
+  
+	@Override
+	public int getTtl(Event event) {
+		int ttl = Integer.MAX_VALUE;
+		for (IndexingHandler ih : indexers.values()) {
+			if (ih instanceof QoSIndexHandler) {
+				ttl = Math.min(ttl,
+						Utils.defaultMax(((QoSIndexHandler) ih).getTtl(event)));
+			}
+		}
+		if ( defaultHandler instanceof QoSIndexHandler ) {
+			ttl = Math.min(ttl,
+					Utils.defaultMax(((QoSIndexHandler) defaultHandler).getTtl(event)));
+		}
+		return ttl;
+	}
+
 
   private IndexingHandler getHandler(String resourceType) {
     IndexingHandler handler = indexers.get(resourceType);

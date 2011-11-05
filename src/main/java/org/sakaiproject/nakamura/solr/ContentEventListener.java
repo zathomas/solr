@@ -27,6 +27,7 @@ import org.sakaiproject.nakamura.api.lite.Repository;
 import org.sakaiproject.nakamura.api.lite.StorageClientException;
 import org.sakaiproject.nakamura.api.lite.accesscontrol.AccessDeniedException;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
+import org.sakaiproject.nakamura.api.solr.QoSIndexHandler;
 import org.sakaiproject.nakamura.api.solr.SolrServerService;
 import org.sakaiproject.nakamura.api.solr.TopicIndexer;
 import org.slf4j.Logger;
@@ -204,6 +205,11 @@ public class ContentEventListener implements EventHandler, TopicIndexer,
 			try {
 				int ttl = Utils.toInt(event.getProperty(TopicIndexer.TTL),
 						Integer.MAX_VALUE);
+				for ( IndexingHandler indexingHandler : contentIndexHandler ) {
+					if ( indexingHandler instanceof QoSIndexHandler ) {
+						ttl = Math.min(ttl, Utils.defaultMax(((QoSIndexHandler)indexingHandler).getTtl(event)));
+					}
+				}
 				QueueManager q = null;
 				for (QueueManager qm : queues) {
 					if (ttl < qm.batchDelay) {
