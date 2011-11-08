@@ -2,7 +2,6 @@ package org.sakaiproject.nakamura.solr;
 
 import java.util.Collection;
 
-import org.apache.sling.jcr.api.SlingRepository;
 import org.osgi.service.event.EventAdmin;
 import org.sakaiproject.nakamura.api.lite.Repository;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
@@ -22,8 +21,6 @@ interface QueueManagerDriver {
 	SolrServerService getSolrServerService();
 
 	EventAdmin getEventAdmin();
-
-	SlingRepository getSlingRepository();
 
 	Repository getSparseRepository();
 

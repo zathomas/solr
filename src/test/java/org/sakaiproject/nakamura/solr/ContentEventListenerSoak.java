@@ -1,11 +1,7 @@
 package org.sakaiproject.nakamura.solr;
 
-import org.apache.sling.jcr.api.SlingRepository;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.common.SolrInputDocument;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 import org.osgi.service.event.Event;
 import org.sakaiproject.nakamura.api.lite.ClientPoolException;
 import org.sakaiproject.nakamura.api.lite.StorageClientException;
@@ -28,36 +24,28 @@ import java.util.Hashtable;
 import java.util.Map;
 import java.util.Random;
 
-import javax.jcr.RepositoryException;
-import javax.jcr.Session;
 import javax.xml.parsers.ParserConfigurationException;
 
 public class ContentEventListenerSoak {
 
   private static final Logger LOGGER = LoggerFactory
       .getLogger(ContentEventListenerSoak.class);
-  @Mock
-  private SlingRepository repository;
-  @Mock
-  private Session session;
   private BaseMemoryRepository baseMemoryRepository;
   
-  public static void main(String[] argv) throws IOException, ParserConfigurationException, SAXException, RepositoryException, InterruptedException, ClientPoolException, StorageClientException, AccessDeniedException, ClassNotFoundException {
+  public static void main(String[] argv) throws IOException, ParserConfigurationException, SAXException, InterruptedException, ClientPoolException, StorageClientException, AccessDeniedException, ClassNotFoundException {
     ContentEventListenerSoak s = new ContentEventListenerSoak();
     s.testContentEventListener();
   }
 
   public ContentEventListenerSoak() throws IOException, ParserConfigurationException,
       SAXException, ClientPoolException, StorageClientException, AccessDeniedException, ClassNotFoundException {
-    MockitoAnnotations.initMocks(this);
     baseMemoryRepository = new BaseMemoryRepository();
   }
 
-  public void testContentEventListener() throws IOException, RepositoryException,
+  public void testContentEventListener() throws IOException, 
       InterruptedException, ClientPoolException, StorageClientException, AccessDeniedException {
     final ContentEventListener contentEventListener = new ContentEventListener();
     
-    contentEventListener.repository = repository;
     contentEventListener.sparseRepository = baseMemoryRepository.getRepository();
 
     contentEventListener.solrServerService = new SolrServerService() {
@@ -75,7 +63,6 @@ public class ContentEventListenerSoak {
       }
     };
     Map<String, Object> properties = new HashMap<String, Object>();
-    Mockito.when(repository.loginAdministrative(null)).thenReturn(session);
     properties.put("dont-run", true);
     contentEventListener.activate(properties);
 

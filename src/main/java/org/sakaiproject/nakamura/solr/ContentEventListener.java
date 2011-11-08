@@ -7,7 +7,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
-import javax.jcr.RepositoryException;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.felix.scr.annotations.Activate;
@@ -17,7 +16,6 @@ import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.felix.scr.annotations.Services;
-import org.apache.sling.jcr.api.SlingRepository;
 import org.osgi.service.event.Event;
 import org.osgi.service.event.EventAdmin;
 import org.osgi.service.event.EventConstants;
@@ -53,8 +51,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer,
 		QueueManagerDriver {
 
 
-	@Property(value = { "org/sakaiproject/nakamura/lite/*",
-			"org/apache/sling/api/resource/Resource/*" }, propertyPrivate = true)
+	@Property(value = { "org/sakaiproject/nakamura/lite/*" }, propertyPrivate = true)
 	static final String TOPICS = EventConstants.EVENT_TOPIC;
 
 	/**
@@ -105,9 +102,6 @@ public class ContentEventListener implements EventHandler, TopicIndexer,
 	protected SolrServerService solrServerService;
 
 	@Reference
-	protected SlingRepository repository;
-
-	@Reference
 	protected Repository sparseRepository;
 
 	@Reference
@@ -132,7 +126,7 @@ public class ContentEventListener implements EventHandler, TopicIndexer,
 
 	@Activate
 	protected void activate(Map<String, Object> properties)
-			throws RepositoryException, IOException, ClientPoolException,
+			throws IOException, ClientPoolException,
 			StorageClientException, AccessDeniedException {
 		String[] queuesConfig = Utils.toStringArray(properties.get(PROP_QUEUE_CONFIG),
 				QUEUE_DEFAULT);
@@ -268,10 +262,6 @@ public class ContentEventListener implements EventHandler, TopicIndexer,
 
 	public EventAdmin getEventAdmin() {
 		return eventAdmin;
-	}
-
-	public SlingRepository getSlingRepository() {
-		return repository;
 	}
 
 	public Repository getSparseRepository() {

@@ -18,9 +18,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import javax.jcr.RepositoryException;
-import javax.jcr.Session;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.SolrServerException;
@@ -119,6 +116,10 @@ public class QueueManager implements Runnable {
 			notifyReader();
 		}
 
+	}
+	
+	public synchronized boolean isRunning() {
+		return running;
 	}
 
 	public void run() {
@@ -392,19 +393,14 @@ public class QueueManager implements Runnable {
 	}
 
 	private RepositorySession getRepositorySession()
-			throws RepositoryException, ClientPoolException,
+			throws ClientPoolException,
 			StorageClientException, AccessDeniedException {
-		final Session session = queueManagerDriver.getSlingRepository()
-				.loginAdministrative(null);
 		final org.sakaiproject.nakamura.api.lite.Session sparseSession = queueManagerDriver
 				.getSparseRepository().loginAdministrative();
 		return new RepositorySession() {
 
 			@SuppressWarnings("unchecked")
 			public <T> T adaptTo(Class<T> c) {
-				if (c.equals(Session.class)) {
-					return (T) session;
-				}
 				if (c.equals(org.sakaiproject.nakamura.api.lite.Session.class)) {
 					return (T) sparseSession;
 				}
@@ -412,11 +408,6 @@ public class QueueManager implements Runnable {
 			}
 
 			public void logout() {
-				try {
-					session.logout();
-				} catch (Exception e) {
-					LOGGER.warn(e.getMessage(), e);
-				}
 				try {
 					sparseSession.logout();
 				} catch (Exception e) {
@@ -709,7 +700,7 @@ public class QueueManager implements Runnable {
 	}
 
 	private void waitForWriter() throws IOException {
-		if (running) {
+		if (isRunning()) {
 			// just incase we have to wait for a while for the lock, get the
 			// last modified now,
 			// so we can see if its modified since we started waiting.
@@ -739,7 +730,7 @@ public class QueueManager implements Runnable {
 				}
 			}
 		}
-		if (!running) {
+		if (!isRunning()) {
 			throw new IOException(
 					"Shutdown in pogress, aborting index queue reader");
 		}
