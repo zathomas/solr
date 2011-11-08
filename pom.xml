@@ -146,10 +146,12 @@
 							!jline.*,
 							!org.jdom.*,
 							!org.apache.struts.*,
-							!org.apache.commons.logging.*,
+							!org.apache.commons.logging.impl.*,
+							!org.apache.avalon.*,
 							!org.dom4j.*,
 							com.ctc.wstx.stax;resolution:=optional,
 							org.mortbay.*;resolution:=optional,
+							javax.servlet.jsp.*;resolution:=optional,
 							*
              </Import-Package>
 						<Private-Package>
@@ -177,7 +179,8 @@
 							commons-validator,
 							commons-digester,
 							solr-commons-csv,
-							commons-beanutils
+							commons-beanutils,
+							commons-httpclient
             </Embed-Dependency>
 					</instructions>
 				</configuration>
