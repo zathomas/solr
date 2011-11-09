@@ -23,6 +23,10 @@ public interface SolrClient {
 	 */
 	public static final String MULTI = "multi";
 	/**
+	 * Remove master, LB Query slaves.
+	 */
+	public static final String MULTIREMOTE = "multiremote";
+	/**
 	 * The client name property.
 	 */
 	public static final String CLIENT_NAME = "client.name";
