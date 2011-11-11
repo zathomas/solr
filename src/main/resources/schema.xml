@@ -471,6 +471,7 @@
    <field name="pagecount" type="string" indexed="true" stored="false" />
    <field name="comment" type="string" indexed="true" stored="false" />
    <field name="hasPreview" type="string" indexed="true" stored="true" />
+   <field name="showalways" type="boolean" indexed="true" stored="false" />
 
    <!-- sakai users -->
    <field name="name" type="text" indexed="true" stored="true" termVectors="true" />
