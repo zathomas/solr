@@ -25,7 +25,7 @@ import org.apache.felix.scr.annotations.Service;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer;
 import org.apache.solr.client.solrj.impl.BinaryResponseParser;
-import org.apache.solr.client.solrj.impl.StreamingUpdateSolrServer;
+import org.apache.solr.client.solrj.impl.CommonsHttpSolrServer;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.NakamuraSolrConfig;
 import org.apache.solr.core.SolrConfig;
@@ -85,11 +85,6 @@ public class MultiMasterSolrClient implements SolrClient {
 	@Property(intValue = 1000)
 	private static final String PROP_SO_TIMEOUT = "socket.timeout";
 
-	@Property(intValue = 100)
-	private static final String PROP_QUEUE_SIZE = "indexer.queue.size";
-
-	@Property(intValue = 10)
-	private static final String PROP_THREAD_COUNT = "indexer.thread.count";
 
 	private static final String LOGGER_KEY = "org.sakaiproject.nakamura.logger";
 	private static final String LOGGER_VAL = "org.apache.solr";
@@ -103,7 +98,7 @@ public class MultiMasterSolrClient implements SolrClient {
 	 * This should be the Solr server that accepts updates. This might be local
 	 * or it might be remote, depending on election.
 	 */
-	private SolrServer updateServer;
+	private ThreadLocal<SolrServer> updateServer = new ThreadLocal<SolrServer>();
 	private String solrHome;
 	private CoreContainer coreContainer;
 	private SolrCore nakamuraCore;
@@ -196,11 +191,6 @@ public class MultiMasterSolrClient implements SolrClient {
 			safeClose(configSource);
 		}
 
-		if (multiMasterProperties == null) {
-			updateServer = server;
-		} else {
-			updateServer = createUpdateServer(multiMasterProperties);
-		}
 		this.enabled = true;
 		this.listener = listener;
 	}
@@ -251,9 +241,7 @@ public class MultiMasterSolrClient implements SolrClient {
 		String url = Utils.toString(properties.get(PROP_SOLR_URL),
 				"http://localhost:8983/solr");
 
-		StreamingUpdateSolrServer remoteServer = new StreamingUpdateSolrServer(
-				url, Utils.toInt(properties.get(PROP_QUEUE_SIZE), 100),
-				Utils.toInt(properties.get(PROP_THREAD_COUNT), 10));
+		CommonsHttpSolrServer remoteServer = new CommonsHttpSolrServer(url);
 		remoteServer.setSoTimeout(Utils.toInt(
 				properties.get(PROP_SO_TIMEOUT), 1000)); // socket
 		// read
@@ -372,7 +360,21 @@ public class MultiMasterSolrClient implements SolrClient {
 	}
 
 	public SolrServer getUpdateServer() {
-		return updateServer;
+		SolrServer solrServer = updateServer.get();
+		if ( solrServer == null ) {
+			if (multiMasterProperties == null) {
+				solrServer = server;
+			} else {
+				try {
+					solrServer = createUpdateServer(multiMasterProperties);
+				} catch ( MalformedURLException e) {
+					LOGGER.error(e.getMessage(),e);
+					return null;
+				}
+			}
+			updateServer.set(solrServer);
+		}
+		return solrServer;
 	}
 
 	public String getSolrHome() {

@@ -1,6 +1,7 @@
 package org.sakaiproject.nakamura.solr;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.Dictionary;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -12,10 +13,13 @@ import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.solr.client.solrj.SolrServer;
 import org.apache.solr.client.solrj.impl.BinaryResponseParser;
+import org.apache.solr.client.solrj.impl.CommonsHttpSolrServer;
 import org.apache.solr.client.solrj.impl.StreamingUpdateSolrServer;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentContext;
 import org.sakaiproject.nakamura.api.solr.SolrClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 @Component(immediate = true, metatype = true)
@@ -55,7 +59,9 @@ public class RemoteSolrClient implements SolrClient {
 	@Property(intValue = 10)
 	private static final String PROP_THREAD_COUNT = "indexer.thread.count";
 
-	private StreamingUpdateSolrServer server;
+	private static final Logger LOGGER = LoggerFactory.getLogger(RemoteSolrClient.class);
+
+	private ThreadLocal<SolrServer> updateServer = new ThreadLocal<SolrServer>();
 	private String solrHome;
 
 	private Dictionary<String, Object> properties;
@@ -63,6 +69,8 @@ public class RemoteSolrClient implements SolrClient {
 	private boolean enabled;
 
 	private SolrClientListener listener;
+
+	private SolrServer queryServer;
 
 	@SuppressWarnings("unchecked")
 	@Activate
@@ -78,9 +86,17 @@ public class RemoteSolrClient implements SolrClient {
 		if ( enabled ) {
 			return;
 		}
+		queryServer = createQueryServer();
+		enabled = true;
+		this.listener = listener;
+	}
+	
+	
+	private SolrServer createQueryServer() throws MalformedURLException {
+		
 		String url = Utils.toString(properties.get(PROP_SOLR_URL),
 				"http://localhost:8983/solr");
-		server = new StreamingUpdateSolrServer(url, Utils.toInt(
+		StreamingUpdateSolrServer server = new StreamingUpdateSolrServer(url, Utils.toInt(
 				properties.get(PROP_QUEUE_SIZE), 100), Utils.toInt(
 				properties.get(PROP_THREAD_COUNT), 10));
 		server.setSoTimeout(Utils.toInt(properties.get(PROP_SO_TIMEOUT),
@@ -109,8 +125,42 @@ public class RemoteSolrClient implements SolrClient {
 														// recommended.
 		server.setParser(new BinaryResponseParser()); // binary parser is used
 														// by default
-		enabled = true;
-		this.listener = listener;
+		return server;
+	}
+
+	
+	private SolrServer createUpdateServer() throws MalformedURLException {
+		
+		String url = Utils.toString(properties.get(PROP_SOLR_URL),
+				"http://localhost:8983/solr");
+		CommonsHttpSolrServer server = new CommonsHttpSolrServer(url);
+		server.setSoTimeout(Utils.toInt(properties.get(PROP_SO_TIMEOUT),
+				1000)); // socket
+						// read
+						// timeout
+		server.setConnectionTimeout(Utils.toInt(
+				properties.get(PROP_CONNECTION_TIMEOUT), 100));
+		server.setDefaultMaxConnectionsPerHost(Utils.toInt(
+				properties.get(PROP_MAX_CONNECTONS_PER_HOST), 100));
+		server.setMaxTotalConnections(Utils.toInt(
+				properties.get(PROP_MAX_TOTAL_CONNECTONS), 100));
+		server.setFollowRedirects(Utils.toBoolean(
+				properties.get(PROP_FOLLOW), false)); // defaults
+														// to
+														// false
+		// allowCompression defaults to false.
+		// Server side must support gzip or deflate for this to have any effect.
+		server.setAllowCompression(Utils.toBoolean(
+				properties.get(PROP_ALLOW_COMPRESSION), true));
+		server.setMaxRetries(Utils.toInt(
+				properties.get(PROP_MAX_RETRIES), 1)); // defaults
+														// to 0.
+														// > 1
+														// not
+														// recommended.
+		server.setParser(new BinaryResponseParser()); // binary parser is used
+														// by default
+		return server;
 	}
 	
 	
@@ -132,7 +182,7 @@ public class RemoteSolrClient implements SolrClient {
 
 
 	public SolrServer getServer() {
-		return server;
+		return queryServer;
 	}
 
 	public String getSolrHome() {
@@ -140,7 +190,17 @@ public class RemoteSolrClient implements SolrClient {
 	}
 
 	public SolrServer getUpdateServer() {
-		return server;
+		SolrServer solrServer = updateServer.get();
+		if ( solrServer == null ) {
+			try {
+				solrServer = createUpdateServer();
+			} catch (MalformedURLException e) {
+				LOGGER.error(e.getMessage(),e);
+				return null;
+			}
+			updateServer.set(solrServer);
+		}
+		return solrServer;
 	}
 
 	public String getName() {
