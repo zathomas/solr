@@ -39,10 +39,10 @@ public class MultiMasterRemoteSolrClient implements SolrClient {
 	private static final String DEFAULT_SOLR_URLS = "http://localhost:8983/solr";
 	private static final Logger LOGGER = LoggerFactory
 			.getLogger(MultiMasterRemoteSolrClient.class);
-	@Property(value = SolrClient.MULTI)
+	@Property(value = SolrClient.MULTIREMOTE)
 	public static final String CLIENT_NAME = SolrClient.CLIENT_NAME;
 
-	@Property(value = { DEFAULT_SOLR_URLS })
+	@Property(value = DEFAULT_SOLR_URLS )
 	private static final String PROP_SOLR_URL = "remoteurl";
 
 	@Property(value = { DEFAULT_SOLR_URLS })

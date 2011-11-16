@@ -29,7 +29,7 @@ public interface SolrClient {
 	/**
 	 * The client name property.
 	 */
-	public static final String CLIENT_NAME = "client.name";
+	public static final String CLIENT_NAME = "client-name";
 
 	/**
 	 * @return the name of the client.

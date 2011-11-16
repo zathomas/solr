@@ -26,9 +26,10 @@ import com.google.common.collect.Maps;
 @Service(value = SolrServerService.class)
 @References(
 		value={
-				@Reference(target="(client.name=embedded)",name="embeddedClient", cardinality=ReferenceCardinality.MANDATORY_UNARY,policy=ReferencePolicy.STATIC,strategy=ReferenceStrategy.EVENT,bind="bind",unbind="unbind",referenceInterface=SolrClient.class),
-				@Reference(target="(client.name=remote)",name="remoteClient", cardinality=ReferenceCardinality.MANDATORY_UNARY,policy=ReferencePolicy.STATIC,strategy=ReferenceStrategy.EVENT,bind="bind",unbind="unbind",referenceInterface=SolrClient.class),
-				@Reference(target="(client.name=multi)",name="slitClient", cardinality=ReferenceCardinality.MANDATORY_UNARY,policy=ReferencePolicy.STATIC,strategy=ReferenceStrategy.EVENT,bind="bind",unbind="unbind",referenceInterface=SolrClient.class),
+				@Reference(target="(client-name=embedded)",name="embeddedClient", cardinality=ReferenceCardinality.MANDATORY_UNARY,policy=ReferencePolicy.STATIC,strategy=ReferenceStrategy.EVENT,bind="bind",unbind="unbind",referenceInterface=SolrClient.class),
+				@Reference(target="(client-name=remote)",name="remoteClient", cardinality=ReferenceCardinality.MANDATORY_UNARY,policy=ReferencePolicy.STATIC,strategy=ReferenceStrategy.EVENT,bind="bind",unbind="unbind",referenceInterface=SolrClient.class),
+				@Reference(target="(client-name=multi)",name="splitClient", cardinality=ReferenceCardinality.MANDATORY_UNARY,policy=ReferencePolicy.STATIC,strategy=ReferenceStrategy.EVENT,bind="bind",unbind="unbind",referenceInterface=SolrClient.class),
+				@Reference(target="(client-name=multiremote)",name="multiRemoteClient", cardinality=ReferenceCardinality.MANDATORY_UNARY,policy=ReferencePolicy.STATIC,strategy=ReferenceStrategy.EVENT,bind="bind",unbind="unbind",referenceInterface=SolrClient.class),
 				@Reference(name="optionalClient", cardinality=ReferenceCardinality.OPTIONAL_MULTIPLE,policy=ReferencePolicy.DYNAMIC,strategy=ReferenceStrategy.EVENT,bind="bind",unbind="unbind",referenceInterface=SolrClient.class)
 		})
 public class SolrServerServiceImpl implements SolrServerService, SolrClientListener {
