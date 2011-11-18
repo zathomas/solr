@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.Arrays;
@@ -189,6 +190,7 @@ public class QueueManager implements Runnable {
 	}
 
 	private void batchedEventRun() {
+		int backoff = 0;
 		while (running) {
 			RepositorySession repositorySession = null;
 			try {
@@ -310,7 +312,10 @@ public class QueueManager implements Runnable {
 										}
 									}
 								} catch (Throwable t) {
-									LOGGER.error(
+									 if ( t instanceof SolrServerException && t.getCause() instanceof ConnectException ) {
+										throw (SolrServerException)t;
+								     }
+									 LOGGER.error(
 											"{} Failed to process event {}, {} cause follows, event ignored for "
 													+ "this processor, please fix issue to remove this message (dont delete "
 													+ "this log message from the code) ",
@@ -328,9 +333,9 @@ public class QueueManager implements Runnable {
 					}
 					if (needsCommit) {
 						LOGGER.info(
-								"Processed {} events in a batch, max {}, TTL {} ",
+								"Processed {} events in a batch, max {}, TTL {}, queue at {}:{}  ",
 								new Object[] { events.size(), batchedIndexSize,
-										getBatchTTL() });
+										getBatchTTL(), currentFile, lineNo});
 						if (nearRealTime) {
 							UpdateRequest updateRequest = new UpdateRequest();
 							updateRequest.setAction(
@@ -350,22 +355,42 @@ public class QueueManager implements Runnable {
 													props));
 						}
 					}
+					backoff = 0;
 					commit();
 				} catch (SolrServerException e) {
-					LOGGER.warn(
-							" Batch Operation completed with Errors, the index may have lost data, please FIX ASAP. "
-									+ e.getMessage(), e);
-					try {
-						service.rollback();
-					} catch (Exception e1) {
-						LOGGER.warn(e.getMessage(), e1);
+					if (e.getCause() instanceof ConnectException) {
+						if (backoff == 0) {
+							backoff = 2;
+						} else if (backoff > 60) {
+							backoff = 2;
+						} else {
+							backoff = backoff * 2;
+						}
+						LOGGER.warn(
+								"Remote Solr master is down, will retry index operation in {}s ",
+								backoff);
+
+						rollback();
+						Thread.sleep(1000 * backoff);
+					} else {
+						LOGGER.warn(
+								" Batch Operation completed with Errors, the index may have lost data, please FIX ASAP. "
+										+ e.getMessage(), e);
+						try {
+							service.rollback();
+						} catch (Exception e1) {
+							LOGGER.warn(e.getMessage(), e1);
+						}
+			            backoff = 0;
+						commit();
 					}
-					commit();
 				} catch (IOException e) {
 					LOGGER.warn(e.getMessage(), e);
+		            backoff = 0;
 					rollback();
 				} catch (SolrException e) {
 					LOGGER.warn(e.getMessage(), e);
+		            backoff = 0;
 					rollback();
 				}
 			} catch (Throwable e) {
@@ -450,12 +475,14 @@ public class QueueManager implements Runnable {
 	private void rollback() throws IOException {
 		currentInFile = savedCurrentInFile;
 		lineNo = savedLineNo;
+		deleteQueue = null;
 		savePosition();
 		if (eventReader != null) {
 			eventReader.close();
 			eventReader = null;
 		}
 		loadPosition(); // reopen the event reader to reset its position.
+		LOGGER.info("Rolled back queue to {}:{} ",currentFile,lineNo);
 	}
 
 	private void savePosition() throws IOException {
