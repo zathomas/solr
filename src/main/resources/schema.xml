@@ -463,7 +463,7 @@
    <field name="viewer" type="string" indexed="true" stored="true" termVectors="true" multiValued="true" />
    <field name="filename" type="text" indexed="true" stored="true" />
    <field name="file" type="string" indexed="true" stored="true" />
-   <field name="tagname" type="string" indexed="true" stored="true" />
+   <field name="tagname" type="string" indexed="true" stored="true" multiValued="true" />
    <field name="taguuid" type="string" indexed="true" stored="true" multiValued="true" termVectors="true" />
    <field name="tag" type="text" indexed="true" stored="true"  multiValued="true" />
    <field name="linkpaths" type="string" indexed="true" stored="false" />
@@ -703,7 +703,10 @@
    <copyField source="title" dest="title_sort" />
    <copyField source="firstName" dest="firstName_sort" />
    <copyField source="lastName" dest="lastName_sort" />
-	
+
+   <!-- fields to copy for better faceting -->
+  <copyField source="tag" dest="tagname" />
+
    <!-- Above, multiple source fields are copied to the [text] field. 
 	  Another way to map multiple source fields to the same 
 	  destination field is to use the dynamic field syntax. 
