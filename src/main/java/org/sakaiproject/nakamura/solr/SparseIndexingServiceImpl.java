@@ -43,7 +43,6 @@ import org.sakaiproject.nakamura.api.lite.accesscontrol.Permissions;
 import org.sakaiproject.nakamura.api.lite.accesscontrol.Security;
 import org.sakaiproject.nakamura.api.lite.content.Content;
 import org.sakaiproject.nakamura.api.lite.content.ContentManager;
-import org.sakaiproject.nakamura.api.solr.ImmediateIndexingHandler;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
 import org.sakaiproject.nakamura.api.solr.RepositorySession;
 import org.sakaiproject.nakamura.api.solr.ResourceIndexingService;
@@ -61,7 +60,7 @@ import java.util.Set;
 @Service(value = ResourceIndexingService.class)
 @Properties( value={@Property(name="type", value="sparse" )})
 public class SparseIndexingServiceImpl implements IndexingHandler,
-    ImmediateIndexingHandler, ResourceIndexingService {
+    ResourceIndexingService {
 
   private static final String PROP_TOPICS = "resource.topics";
   private static final Logger LOGGER = LoggerFactory
@@ -74,12 +73,9 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
   private String[] topics;
 
   private Map<String, IndexingHandler> indexers = Maps.newConcurrentMap();
-  private Map<String, ImmediateIndexingHandler> immediateIndexers = Maps.newConcurrentMap();
   private IndexingHandler defaultHandler;
   @SuppressWarnings("unchecked")
   private Map<String, String> ignoreCache = new LRUMap(500);
-  @SuppressWarnings("unchecked")
-  private Map<String, String> immediateIgnoreCache = new LRUMap(500);
   private static final String[] BLACK_LISTED = {
       "/dev/",
       "/devwidgets/",
@@ -95,7 +91,6 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     defaultHandler = new DefaultSparseHandler();
     topics = PropertiesUtil.toStringArray(properties.get(PROP_TOPICS), StoreListener.DEFAULT_TOPICS);
     for (String topic : topics) {
-      contentIndexer.addImmediateHandler(topic, this);
       contentIndexer.addHandler(topic, this);
     }
   }
@@ -103,45 +98,8 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
   @Deactivate
   public void deactivate(Map<String, Object> properties) {
     for (String topic : topics) {
-      contentIndexer.removeImmediateHandler(topic, this);
       contentIndexer.removeHandler(topic, this);
     }
-  }
-
-  public Collection<SolrInputDocument> getImmediateDocuments(
-      RepositorySession repositorySession, Event event) {
-    String topic = event.getTopic();
-    if (topic.endsWith(StoreListener.UPDATED_TOPIC) || topic.endsWith(StoreListener.ADDED_TOPIC)) {
-      String path = (String) event.getProperty(FIELD_PATH);
-
-      if (!ignore(path) && !immediateIgnoreCache.containsKey(path)) {
-       ImmediateIndexingHandler handler = getHandler(repositorySession, path,
-            this.immediateIndexers, this.immediateIgnoreCache);
-
-        List<SolrInputDocument> outputDocs = Lists.newArrayList();
-        Collection<SolrInputDocument> docs = handler.getImmediateDocuments(repositorySession, event);
-        for (SolrInputDocument doc : docs) {
-          // check the fields of the returned docs to make sure they contain atleast 1
-          // field that is not a system property. this is not to filter out any system
-          // properties but to make sure there are more things to index than just system
-          // properties.
-          if (!SYSTEM_PROPERTIES.containsAll(doc.getFieldNames())) {
-            try {
-              addDefaultFields(doc, repositorySession);
-              outputDocs.add(doc);
-            } catch (StorageClientException e) {
-              LOGGER.warn("Failed to index {} cause: {} ", path, e.getMessage());
-            }
-          }
-        }
-        return outputDocs;
-      } else {
-        LOGGER.debug("Ignored action at path:{}  require on {} ", path, event);
-      }
-    } else {
-      LOGGER.debug("No update action require on {} ", event);
-    }
-    return ImmutableList.of();
   }
 
   public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession,
@@ -149,27 +107,29 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     String topic = event.getTopic();
     if (topic.endsWith(StoreListener.UPDATED_TOPIC) || topic.endsWith(StoreListener.ADDED_TOPIC)) {
       String path = (String) event.getProperty(FIELD_PATH);
-
-      if (!ignore(path) && !ignoreCache.containsKey(path)) {
-        IndexingHandler handler = getHandler(repositorySession, path, this.indexers, this.ignoreCache);
-
+      if (!ignore(path)) {
+        LOGGER.debug("Update action at path:{}  require on {} ", path, event);
+        Collection<SolrInputDocument> docs = getHandler(repositorySession, path)
+            .getDocuments(repositorySession, event);
         List<SolrInputDocument> outputDocs = Lists.newArrayList();
-        Collection<SolrInputDocument> docs = handler.getDocuments(repositorySession, event);
         for (SolrInputDocument doc : docs) {
-          // check the fields of the returned docs to make sure they contain atleast 1
-          // field that is not a system property. this is not to filter out any system
-          // properties but to make sure there are more things to index than just system
-          // properties.
-          if (!SYSTEM_PROPERTIES.containsAll(doc.getFieldNames())) {
-            try {
-              addDefaultFields(doc, repositorySession);
-              outputDocs.add(doc);
-            } catch (StorageClientException e) {
-              LOGGER.warn("Failed to index {} cause: {} ", path, e.getMessage());
+          for (String name : doc.getFieldNames()) {
+            // loop through the fields of the returned docs to make sure they contain
+            // atleast 1 field that is not a system property. this is not to filter out
+            // any system properties but to make sure there are more things to index than
+            // just system properties.
+            if (!SYSTEM_PROPERTIES.contains(name)) {
+              try {
+                addDefaultFields(doc, repositorySession);
+                outputDocs.add(doc);
+              } catch (StorageClientException e) {
+                LOGGER.warn("Failed to index {} cause: {} ", path, e.getMessage());
+              }
+              break;
             }
           }
-          return outputDocs;
         }
+        return outputDocs;
       } else {
         LOGGER.debug("Ignored action at path:{}  require on {} ", path, event);
       }
@@ -211,6 +171,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     }
   }
 
+
   private String[] getReadingPrincipals(RepositorySession repositorySession,
       String zone, String path) throws StorageClientException {
     Session session = repositorySession.adaptTo(Session.class);
@@ -218,9 +179,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     return accessControlManager.findPrincipals(zone, path,Permissions.CAN_READ.getPermission(), true);
   }
 
-  @SuppressWarnings("unchecked")
-  private <T> T getHandler(RepositorySession repositorySession, String path,
-      Map<String, T> indexers, Map<String, String> ignoreCache) {
+  private IndexingHandler getHandler(RepositorySession repositorySession, String path) {
     org.sakaiproject.nakamura.api.lite.Session sparseSession = repositorySession
         .adaptTo(org.sakaiproject.nakamura.api.lite.Session.class);
 
@@ -234,16 +193,14 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
             if (c != null) {
               if (c.hasProperty("sling:resourceType")) {
                 String resourceType = (String) c.getProperty("sling:resourceType");
-                T handler = indexers.get(resourceType);
+                IndexingHandler handler = indexers.get(resourceType);
                 if (handler != null) {
                   LOGGER.debug("Handler of type {} found {} for {} from {} ", new Object[] {
                       resourceType, handler, path, indexers });
                   return handler;
                 } else {
-                  LOGGER.debug("Ignoring {}; no handler", path);
-                  synchronized (this) {
-                    ignoreCache.put(path, path);
-                  }
+                  LOGGER.debug("Ignored {} no handler for {} ", path, resourceType);
+                  ignoreCache.put(path, path);
                 }
               } else {
                 LOGGER.debug("Ignored {} no resource type ",path);
@@ -261,7 +218,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
       }
       path = Utils.getParentPath(path);
     }
-    return (T) defaultHandler;
+    return defaultHandler;
   }
 
   public Collection<String> getDeleteQueries(RepositorySession repositorySession,
@@ -269,16 +226,15 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     String topic = event.getTopic();
     if (topic.endsWith(StoreListener.DELETE_TOPIC)) {
       String path = (String) event.getProperty(FIELD_PATH);
-      if (!ignore(path) && !ignoreCache.containsKey(path)) {
+      if (!ignore(path)) {
         String resourceType = (String) event.getProperty("resourceType");
-
-        IndexingHandler handler = null;
         if (resourceType != null) {
-          handler = getHandler(resourceType, this.indexers);
+          return getHandler(resourceType).getDeleteQueries(repositorySession,
+              event);
         } else {
-          handler = getHandler(repositorySession, path, this.indexers, this.ignoreCache);
+          return getHandler(repositorySession, path).getDeleteQueries(repositorySession,
+              event);
         }
-        return handler.getDeleteQueries(repositorySession, event);
       }
     } else {
       LOGGER.debug("No delete action require on {} ", event);
@@ -286,35 +242,10 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     return ImmutableList.of();
   }
 
-  public Collection<String> getImmediateDeleteQueries(RepositorySession repositorySession,
-      Event event) {
-    String topic = event.getTopic();
-    if (topic.endsWith(StoreListener.DELETE_TOPIC)) {
-      String path = (String) event.getProperty(FIELD_PATH);
-      if (!ignore(path) && !immediateIgnoreCache.containsKey(path)) {
-        String resourceType = (String) event.getProperty("resourceType");
-
-        ImmediateIndexingHandler handler = null;
-        if (resourceType != null) {
-          handler = (ImmediateIndexingHandler) getHandler(resourceType,
-              this.immediateIndexers);
-        } else {
-          handler = (ImmediateIndexingHandler) getHandler(repositorySession, path,
-              this.immediateIndexers, this.immediateIgnoreCache);
-        }
-        return handler.getImmediateDeleteQueries(repositorySession, event);
-      }
-    } else {
-      LOGGER.debug("No delete action require on {} ", event);
-    }
-    return ImmutableList.of();
-  }
-
-  @SuppressWarnings("unchecked")
-  private <T> T getHandler(String resourceType, Map<String, T> indexers) {
-    T handler = indexers.get(resourceType);
+  private IndexingHandler getHandler(String resourceType) {
+    IndexingHandler handler = indexers.get(resourceType);
     if (handler == null) {
-      handler = (T) defaultHandler;
+      handler = defaultHandler;
     }
     return handler;
   }
@@ -322,30 +253,12 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
   public void addHandler(String key, IndexingHandler handler) {
     LOGGER.debug("Added New Indexer as {} at {} ",  key,
         handler);
-    indexers.put(key, handler);
-    // reset what is ignored so the newly registered handler has a chance to respond to
-    // any previously unhandled indexing
-    ignoreCache.clear();
-  }
-
-  public void addImmediateHandler(String key, ImmediateIndexingHandler handler) {
-    LOGGER.debug("Added New Immediate Indexer as {} at {} ",  key,
-        handler);
-    immediateIndexers.put(key, handler);
-    // reset what is ignored so the newly registered handler has a chance to respond to
-    // any previously unhandled indexing
-    immediateIgnoreCache.clear();
+    indexers.put( key, handler);
   }
 
   public void removeHandler(String key, IndexingHandler handler) {
     if (handler.equals(indexers.get(key))) {
       indexers.remove(key);
-    }
-  }
-
-  public void removeImmediateHandler(String key, ImmediateIndexingHandler handler) {
-    if (handler.equals(immediateIndexers.get(key))) {
-      immediateIndexers.remove(key);
     }
   }
 

@@ -27,7 +27,6 @@ import org.apache.solr.client.solrj.util.ClientUtils;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.schema.DateField;
 import org.osgi.service.event.Event;
-import org.sakaiproject.nakamura.api.solr.ImmediateIndexingHandler;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
 import org.sakaiproject.nakamura.api.solr.RepositorySession;
 import org.slf4j.Logger;
@@ -47,7 +46,7 @@ import javax.jcr.RepositoryException;
 import javax.jcr.Session;
 import javax.jcr.Value;
 
-public class DefaultResourceTypeHandler implements IndexingHandler, ImmediateIndexingHandler {
+public class DefaultResourceTypeHandler implements IndexingHandler {
 
   private static final Logger LOGGER = LoggerFactory
       .getLogger(DefaultResourceTypeHandler.class);
@@ -215,18 +214,6 @@ public class DefaultResourceTypeHandler implements IndexingHandler, ImmediateInd
     String mappedName = INDEX_FIELD_MAP.get(name);
     // only fields in the map will be used, and those are in the schema.
     return mappedName;
-  }
-
-
-  public Collection<SolrInputDocument> getImmediateDocuments(
-      RepositorySession repositorySession, Event event) {
-    return Collections.emptyList();
-  }
-
-
-  public Collection<String> getImmediateDeleteQueries(
-      RepositorySession respositorySession, Event event) {
-    return Collections.emptyList();
   }
 
 }

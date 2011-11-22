@@ -34,7 +34,6 @@ import org.apache.sling.api.SlingConstants;
 import org.apache.sling.commons.osgi.PropertiesUtil;
 import org.apache.solr.common.SolrInputDocument;
 import org.osgi.service.event.Event;
-import org.sakaiproject.nakamura.api.solr.ImmediateIndexingHandler;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
 import org.sakaiproject.nakamura.api.solr.RepositorySession;
 import org.sakaiproject.nakamura.api.solr.ResourceIndexingService;
@@ -62,7 +61,7 @@ import javax.jcr.security.Privilege;
 @Component(immediate = true, metatype = true)
 @Service(value = ResourceIndexingService.class)
 @Properties( value={@Property(name="type", value="jcr" )})
-public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIndexingHandler,
+public class ResourceIndexingServiceImpl implements IndexingHandler,
     ResourceIndexingService {
 
   private static final String PROP_TOPICS = "resource.topics";
@@ -81,7 +80,6 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
   private String[] topics;
 
   private Map<String, IndexingHandler> indexers = Maps.newConcurrentMap();
-  private Map<String, ImmediateIndexingHandler> immediateIndexers = Maps.newConcurrentMap();
   private IndexingHandler defaultHandler;
   @SuppressWarnings("unchecked")
   private Map<String, String> ignoreCache = new LRUMap(500);
@@ -102,7 +100,6 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
     defaultHandler = new DefaultResourceTypeHandler();
     topics = PropertiesUtil.toStringArray(properties.get(PROP_TOPICS), DEFAULT_TOPICS);
     for (String topic : topics) {
-      contentIndexer.addImmediateHandler(topic, this);
       contentIndexer.addHandler(topic, this);
     }
   }
@@ -110,38 +107,8 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
   @Deactivate
   public void deactivate(Map<String, Object> properties) {
     for (String topic : topics) {
-      contentIndexer.removeImmediateHandler(topic, this);
       contentIndexer.removeHandler(topic, this);
     }
-  }
-
-  public Collection<SolrInputDocument> getImmediateDocuments(
-      RepositorySession repositorySession, Event event) {
-    String topic = event.getTopic();
-    if (topic.endsWith(CHANGED_TOPIC) || topic.endsWith(ADDED_TOPIC)) {
-      String path = (String) event.getProperty("path");
-      LOGGER.debug("Update action at path:{}  require on {} ", path, event);
-
-      if (!ignore(path)) {
-        ImmediateIndexingHandler handler = getHandler(repositorySession, path, this.immediateIndexers);
-        Collection<SolrInputDocument> docs = handler.getImmediateDocuments(repositorySession, event);
-        List<SolrInputDocument> outputDocs = Lists.newArrayList();
-        for (SolrInputDocument doc : docs) {
-          if (!SYSTEM_PROPERTIES.containsAll(doc.getFieldNames())) {
-            try {
-              addDefaultFields(doc);
-              outputDocs.add(doc);
-            } catch (RepositoryException e) {
-              LOGGER.error("Failed to index {} cause: {} ",path, e.getMessage());
-            }
-          }
-        }
-        return outputDocs;
-      }
-    } else {
-      LOGGER.debug("No update action require on {} ", event);
-    }
-    return ImmutableList.of();
   }
 
   public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession,
@@ -152,16 +119,19 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
       LOGGER.debug("Update action at path:{}  require on {} ", path, event);
       
       if (!ignore(path)) {
-        IndexingHandler handler = getHandler(repositorySession, path, indexers);
-        Collection<SolrInputDocument> docs = handler.getDocuments(repositorySession, event);
+        Collection<SolrInputDocument> docs = getHandler(repositorySession, path)
+            .getDocuments(repositorySession, event);
         List<SolrInputDocument> outputDocs = Lists.newArrayList();
         for (SolrInputDocument doc : docs) {
-          if (!SYSTEM_PROPERTIES.containsAll(doc.getFieldNames())) {
-            try {
-              addDefaultFields(doc);
-              outputDocs.add(doc);
-            } catch (RepositoryException e) {
-              LOGGER.error("Failed to index {} cause: {} ",path, e.getMessage());
+          for (String name : doc.getFieldNames()) {
+            if (!SYSTEM_PROPERTIES.contains(name)) {
+              try {
+                addDefaultFields(doc);
+                outputDocs.add(doc);
+              } catch (RepositoryException e) {
+                LOGGER.error("Failed to index {} cause: {} ",path, e.getMessage());
+              }
+              break;
             }
           }
         }
@@ -172,7 +142,7 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
     }
     return ImmutableList.of();
   }
-
+  
   private void addDefaultFields(SolrInputDocument doc) throws RepositoryException {
     Node node = (Node) doc.getFieldValue(_DOC_SOURCE_OBJECT);
     if ( node != null ) {
@@ -203,9 +173,7 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
   }
 
 
-  @SuppressWarnings("unchecked")
-  private <T> T getHandler(RepositorySession repositorySession, String path,
-      Map<String, T> indexers) {
+  private IndexingHandler getHandler(RepositorySession repositorySession, String path) {
     Session session = repositorySession.adaptTo(Session.class);
 
     while (!isRoot(path)) {
@@ -220,7 +188,7 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
               if (n.hasProperty("sling:resourceType")) {
                 resourceType = n.getProperty("sling:resourceType").getString();
               }
-              T handler = indexers.get(resourceType);
+              IndexingHandler handler = indexers.get(resourceType);
               if (handler != null) {
                 LOGGER.debug("Handler of type {} found {} for {} from {} ", new Object[] {
                     resourceType, handler, path, indexers });
@@ -237,7 +205,7 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
       }
       path = Utils.getParentPath(path);
     }
-    return (T) defaultHandler;
+    return defaultHandler;
   }
 
   /**
@@ -272,27 +240,14 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
     return true;
   }
 
-  public Collection<String> getImmediateDeleteQueries(
-      RepositorySession repositorySession, Event event) {
-    String topic = event.getTopic();
-    if (topic.endsWith(REMOVE_TOPIC)) {
-      String path = (String) event.getProperty("path");
-      if (!ignore(path)) {
-        return getHandler(repositorySession, path, immediateIndexers).getImmediateDeleteQueries(repositorySession, event);
-      }
-    } else {
-      LOGGER.debug("No delete action require on {} ", event);
-    }
-    return ImmutableList.of();
-  }
-
   public Collection<String> getDeleteQueries(RepositorySession repositorySession,
       Event event) {
     String topic = event.getTopic();
     if (topic.endsWith(REMOVE_TOPIC)) {
       String path = (String) event.getProperty("path");
       if (!ignore(path)) {
-        return getHandler(repositorySession, path, indexers).getDeleteQueries(repositorySession, event);
+        return getHandler(repositorySession, path).getDeleteQueries(repositorySession,
+            event);
       }
     } else {
       LOGGER.debug("No delete action require on {} ", event);
@@ -318,23 +273,13 @@ public class ResourceIndexingServiceImpl implements IndexingHandler, ImmediateIn
     indexers.put( key, handler);
   }
 
-  public void addImmediateHandler(String key, ImmediateIndexingHandler handler) {
-    LOGGER.debug("Added New Immediate Indexer as {} at {} ",  key,
-        handler);
-    immediateIndexers.put( key, handler);
-  }
-
   public void removeHandler(String key, IndexingHandler handler) {
     if (handler.equals(indexers.get(key))) {
       indexers.remove(key);
     }
   }
 
-  public void removeImmediateHandler(String key, ImmediateIndexingHandler handler) {
-    if (handler.equals(immediateIndexers.get(key))) {
-      immediateIndexers.remove(key);
-    }
-  }
+  
 
 /**
  * Gets the principals that can read the node. Principals are stored as protected nodes.
