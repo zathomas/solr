@@ -30,8 +30,7 @@ public interface Indexer {
    * 
    * @param key
    *          the key on which the handler should be selected, normally this is
-   *          sling:resoureType or in the case of JCR it might also be the primary node
-   *          type.
+   *          sling:resoureType 
    * @param handler
    *          the handler to be registered.
    */

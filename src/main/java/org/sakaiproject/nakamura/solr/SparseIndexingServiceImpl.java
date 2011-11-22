@@ -17,10 +17,10 @@
  */
 package org.sakaiproject.nakamura.solr;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.collections.map.LRUMap;
 import org.apache.felix.scr.annotations.Activate;
@@ -30,7 +30,6 @@ import org.apache.felix.scr.annotations.Properties;
 import org.apache.felix.scr.annotations.Property;
 import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
-import org.apache.sling.commons.osgi.PropertiesUtil;
 import org.apache.solr.common.SolrInputDocument;
 import org.osgi.service.event.Event;
 import org.sakaiproject.nakamura.api.lite.Session;
@@ -44,6 +43,7 @@ import org.sakaiproject.nakamura.api.lite.accesscontrol.Security;
 import org.sakaiproject.nakamura.api.lite.content.Content;
 import org.sakaiproject.nakamura.api.lite.content.ContentManager;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
+import org.sakaiproject.nakamura.api.solr.QoSIndexHandler;
 import org.sakaiproject.nakamura.api.solr.RepositorySession;
 import org.sakaiproject.nakamura.api.solr.ResourceIndexingService;
 import org.sakaiproject.nakamura.api.solr.TopicIndexer;
@@ -51,16 +51,16 @@ import org.sakaiproject.nakamura.solr.handlers.DefaultSparseHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 @Component(immediate = true, metatype = true)
 @Service(value = ResourceIndexingService.class)
 @Properties( value={@Property(name="type", value="sparse" )})
 public class SparseIndexingServiceImpl implements IndexingHandler,
-    ResourceIndexingService {
+    ResourceIndexingService, QoSIndexHandler {
 
   private static final String PROP_TOPICS = "resource.topics";
   private static final Logger LOGGER = LoggerFactory
@@ -89,7 +89,7 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
   @Activate
   public void activate(Map<String, Object> properties) {
     defaultHandler = new DefaultSparseHandler();
-    topics = PropertiesUtil.toStringArray(properties.get(PROP_TOPICS), StoreListener.DEFAULT_TOPICS);
+    topics = Utils.toStringArray(properties.get(PROP_TOPICS), StoreListener.DEFAULT_TOPICS);
     for (String topic : topics) {
       contentIndexer.addHandler(topic, this);
     }
@@ -241,6 +241,23 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
     }
     return ImmutableList.of();
   }
+  
+	@Override
+	public int getTtl(Event event) {
+		int ttl = Integer.MAX_VALUE;
+		for (IndexingHandler ih : indexers.values()) {
+			if (ih instanceof QoSIndexHandler) {
+				ttl = Math.min(ttl,
+						Utils.defaultMax(((QoSIndexHandler) ih).getTtl(event)));
+			}
+		}
+		if ( defaultHandler instanceof QoSIndexHandler ) {
+			ttl = Math.min(ttl,
+					Utils.defaultMax(((QoSIndexHandler) defaultHandler).getTtl(event)));
+		}
+		return ttl;
+	}
+
 
   private IndexingHandler getHandler(String resourceType) {
     IndexingHandler handler = indexers.get(resourceType);

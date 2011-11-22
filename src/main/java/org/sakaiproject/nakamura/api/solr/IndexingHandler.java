@@ -25,7 +25,7 @@ import java.util.Collection;
 /**
  * An index handler generates collections of documents to add and remove from the index
  * based on events. Index Handlers should explicitly register themselves against a Indexer
- * or TopicIndexer on activation and de-register on deactivation. Depending on the type of
+ * or TopicIndexer on activation and de-register on de-activation. Depending on the type of
  * IndexHandler and the registration the RepositorySession may adapt to one or many
  * repository sessions. If the adaptTo was registered with a TopicIndexer, then there
  * will be no guarantees that the RepositorySession will be adaptable to any type of
