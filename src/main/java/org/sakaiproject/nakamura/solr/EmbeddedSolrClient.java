@@ -117,10 +117,7 @@ public class EmbeddedSolrClient implements SolrClient {
 		System.setProperty("solr.solr.home", solrHome);
 		File solrHomeFile = new File(solrHome);
 		File coreDir = new File(solrHomeFile, "nakamura");
-		// File coreConfigDir = new File(solrHomeFile,"conf");
-		deployFile(solrHomeFile, "solr.xml");
-		// deployFile(coreConfigDir,"solrconfig.xml");
-		// deployFile(coreConfigDir,"schema.xml");
+		File coreConfigDir = new File(solrHomeFile,"config");
 		ClassLoader contextClassloader = Thread.currentThread()
 				.getContextClassLoader();
 		Thread.currentThread().setContextClassLoader(
@@ -131,8 +128,8 @@ public class EmbeddedSolrClient implements SolrClient {
 			NakamuraSolrResourceLoader loader = new NakamuraSolrResourceLoader(
 					solrHome, this.getClass().getClassLoader());
 			coreContainer = new CoreContainer(loader);
-			configSource = getSource(configLocation);
-			schemaSource = getSource(schemaLocation);
+			configSource = new ClosableInputSource(getSource(configLocation, coreConfigDir));
+			schemaSource = new ClosableInputSource(getSource(schemaLocation, coreConfigDir));
 			LOGGER.info("Configuring with Config {} schema {} ",
 					configLocation, schemaLocation);
 			SolrConfig config = new NakamuraSolrConfig(loader, configLocation,
@@ -182,15 +179,15 @@ public class EmbeddedSolrClient implements SolrClient {
 		return logConfiguration;
 	}
 
-	private ClosableInputSource getSource(String name) throws IOException {
+	private InputStream getSource(String name, File internalLocation) throws IOException {
 		if (name.contains(":")) {
 			// try a URL
 			try {
 				URL u = new URL(name);
 				InputStream in = u.openStream();
 				if (in != null) {
-
-					return new ClosableInputSource(in);
+					LOGGER.info("Using Config file {}",name);
+					return in;
 				}
 			} catch (IOException e) {
 				LOGGER.debug(e.getMessage(), e);
@@ -198,10 +195,19 @@ public class EmbeddedSolrClient implements SolrClient {
 		}
 		// try a file
 		File f = new File(name);
+		File finternal = new File(internalLocation, name);
+		File fhome = new File(solrHome, name);
 		if (f.exists()) {
-			return new ClosableInputSource(new FileInputStream(f));
+			LOGGER.info("Using Config file {} from {} ",name,f.getAbsolutePath());
+			return new FileInputStream(f);
+		} else if ( fhome.exists() ) {
+			LOGGER.info("Using Config file {} from {} ",name,fhome.getAbsolutePath());
+			return new FileInputStream(fhome);			
+		} else if ( finternal.exists() ) {
+			LOGGER.info("Using Config file {} from {} ",name,finternal.getAbsolutePath());
+			return new FileInputStream(finternal);
 		} else {
-			// try classpath
+			// try classpath, and deploy
 			InputStream in = this.getClass().getClassLoader()
 					.getResourceAsStream(name);
 			if (in == null) {
@@ -211,11 +217,14 @@ public class EmbeddedSolrClient implements SolrClient {
 				throw new IOException("Failed to locate stream " + name
 						+ ", tried URL, filesystem ");
 			}
-			return new ClosableInputSource(in);
+			LOGGER.info("Deploying from {} from Classpath ",name);
+			deployStream(internalLocation, name, in); // this wont overwrite.
+			LOGGER.info("Using Config file {} from {} ",name,finternal.getAbsolutePath());
+			return new FileInputStream(finternal);
 		}
 	}
 
-	private void deployFile(File destDir, String target) throws IOException {
+	private void deployStream(File destDir, String target, InputStream in) throws IOException {
 		if (!destDir.isDirectory()) {
 			if (!destDir.mkdirs()) {
 				LOGGER.warn(
@@ -225,12 +234,11 @@ public class EmbeddedSolrClient implements SolrClient {
 		}
 		File destFile = new File(destDir, target);
 		if (!destFile.exists()) {
-			InputStream in = Utils.class.getClassLoader().getResourceAsStream(
-					target);
 			OutputStream out = new FileOutputStream(destFile);
 			IOUtils.copy(in, out);
 			out.close();
 			in.close();
+			LOGGER.info("Saved Config file {} to {} ", target, destFile.getAbsolutePath());
 		}
 	}
 
