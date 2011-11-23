@@ -19,14 +19,13 @@ package org.sakaiproject.nakamura.solr.handlers;
 
 import org.apache.solr.common.SolrInputDocument;
 import org.osgi.service.event.Event;
-import org.sakaiproject.nakamura.api.solr.ImmediateIndexingHandler;
 import org.sakaiproject.nakamura.api.solr.IndexingHandler;
 import org.sakaiproject.nakamura.api.solr.RepositorySession;
 
 import java.util.Collection;
 import java.util.Collections;
 
-public class DefaultSparseHandler implements IndexingHandler, ImmediateIndexingHandler {
+public class DefaultSparseHandler implements IndexingHandler {
 
   public Collection<SolrInputDocument> getDocuments(RepositorySession repositorySession,
       Event event) {
@@ -35,16 +34,6 @@ public class DefaultSparseHandler implements IndexingHandler, ImmediateIndexingH
 
   public Collection<String> getDeleteQueries(RepositorySession respositorySession,
       Event event) {
-    return Collections.emptyList();
-  }
-
-  public Collection<SolrInputDocument> getImmediateDocuments(
-      RepositorySession repositorySession, Event event) {
-    return Collections.emptyList();
-  }
-
-  public Collection<String> getImmediateDeleteQueries(
-      RepositorySession respositorySession, Event event) {
     return Collections.emptyList();
   }
 

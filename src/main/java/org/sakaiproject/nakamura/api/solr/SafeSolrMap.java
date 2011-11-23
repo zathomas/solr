@@ -73,7 +73,7 @@ public class SafeSolrMap<K, V> implements Map<K,V> {
         }
       };
     }
-    Set<Entry<K,V>> entrySet = ImmutableSet.of(elements);
+    Set<Entry<K,V>> entrySet = ImmutableSet.copyOf(elements);
     return entrySet;
   }
 

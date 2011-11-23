@@ -30,13 +30,11 @@ public interface Indexer {
    * 
    * @param key
    *          the key on which the handler should be selected, normally this is
-   *          sling:resoureType or in the case of JCR it might also be the primary node
-   *          type.
+   *          sling:resoureType 
    * @param handler
    *          the handler to be registered.
    */
   void addHandler(String key, IndexingHandler handler);
-  void addImmediateHandler(String key, ImmediateIndexingHandler handler);
 
   /**
    * Remove the handler registration, if that registration exists.
@@ -47,5 +45,5 @@ public interface Indexer {
    *          the handler
    */
   void removeHandler(String key, IndexingHandler handler);
-  void removeImmediateHandler(String key, ImmediateIndexingHandler handler);
+
 }
