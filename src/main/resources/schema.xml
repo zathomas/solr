@@ -532,6 +532,7 @@
    <field name="title_sort" type="lowercase" indexed="true" stored="false" />
    <field name="firstName_sort" type="lowercase" indexed="true" stored="false" />
    <field name="lastName_sort" type="lowercase" indexed="true" stored="false" />
+   <field name="filename_sort" type="lowercase" indexed="true" stored="false" />
    <field name="general_sort" type="lowercase" indexed="true" stored="false" />
 <!-- 
    <field name="id" type="string" indexed="true" stored="true" required="true" /> 
@@ -704,6 +705,7 @@
    <copyField source="title" dest="title_sort" />
    <copyField source="firstName" dest="firstName_sort" />
    <copyField source="lastName" dest="lastName_sort" />
+   <copyField source="filename" dest="filename_sort" />
 
    <!-- fields to copy for better faceting -->
   <copyField source="tag" dest="tagname" />
