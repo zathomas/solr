@@ -44,6 +44,72 @@
 			</build>
 		</profile>
 		<profile>
+			<id>license</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>com.mycila.maven-license-plugin</groupId>
+						<artifactId>maven-license-plugin</artifactId>
+						<version>1.9.0</version>
+						<configuration>
+							<basedir>${basedir}</basedir>
+							<encoding>UTF-8</encoding>
+							<header>src/main/resources/header.txt</header>
+							<quiet>false</quiet>
+							<failIfMissing>true</failIfMissing>
+							<aggregate>false</aggregate>
+							<includes>
+								<include>src/main/**/*.java</include>
+								<include>src/test/**/*.java</include>
+								<include>src/main/**/*.css</include>
+								<include>src/main/**/*.htm</include>
+								<include>src/main/**/*.html</include>
+								<include>src/main/**/*.js</include>
+							</includes>
+							<excludes>
+								<exclude>bin/**</exclude>
+								<exclude>src/main/resources/**</exclude>
+								<exclude>src/test/resources/**</exclude>
+								<exclude>target/**</exclude>
+								<exclude>m2-target/**</exclude>
+								<exclude>COMMITTERS</exclude>
+								<exclude>CONTRIBUTING</exclude>
+								<exclude>LICENSE</exclude>
+								<exclude>NOTICE</exclude>
+								<exclude>**/.*</exclude>
+								<exclude>**/*.bat</exclude>
+								<exclude>**/*.doc</exclude>
+								<exclude>**/*.json</exclude>
+								<exclude>**/*.md</exclude>
+								<exclude>**/*.properties</exclude>
+								<exclude>**/*.sh</exclude>
+								<exclude>**/*.txt</exclude>
+								<exclude>**/*.textile</exclude>
+								<exclude>**/*.xml</exclude>
+							</excludes>
+							<properties>
+								<holder>Sakai Foundation</holder>
+								<holder.acronym>SF</holder.acronym>
+								<apache.license.version>2.0</apache.license.version>
+							</properties>
+							<strictCheck>true</strictCheck>
+							<useDefaultExcludes>true</useDefaultExcludes>
+							<useDefaultMapping>true</useDefaultMapping>
+						</configuration>
+						<executions>
+							<execution>
+								<id>check-headers</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>check</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
 			<id>release-sign-artifacts</id>
 			<activation>
 				<property>
@@ -72,6 +138,13 @@
 		</profile>
 	</profiles>
 	<build>
+		<extensions>
+			<extension>
+				<groupId>org.apache.maven.wagon</groupId>
+				<artifactId>wagon-ssh</artifactId>
+				<version>2.1</version>
+			</extension>
+		</extensions>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -92,6 +165,24 @@
 					<compilerArgument>-Xlint:unchecked,deprecation,fallthrough,finally</compilerArgument>
 					<fork>true</fork>
 					<encoding>${project.build.sourceEncoding}</encoding>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>2.0.4</version>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<phase>package</phase>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<excludeResources>true</excludeResources>
+					<attach>true</attach>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -341,6 +432,31 @@
 			</plugin>
 		</plugins>
 	</reporting>
+	<!-- ====================================================================== -->
+	<!-- D I S T R I B U T I O N M A N A G E M E N T -->
+	<!-- ====================================================================== -->
+	<distributionManagement>
+		<downloadUrl>http://source.sakaiproject.org/maven2/</downloadUrl>
+		<snapshotRepository>
+			<uniqueVersion>false</uniqueVersion>
+			<id>sakai-maven-snapshots-scp</id>
+			<name>Sakai snapshot Repo</name>
+			<url>scp://source.sakaiproject.org/var/www/html/maven2-snapshots</url>
+			<layout>default</layout>
+		</snapshotRepository>
+		<repository>
+			<uniqueVersion>false</uniqueVersion>
+			<id>sakai-maven2-scp</id>
+			<name>Sakai maven2 repository</name>
+			<url>scp://source.sakaiproject.org/var/www/html/maven2</url>
+			<layout>default</layout>
+		</repository>
+		<site>
+			<id>sakai-site</id>
+			<name>Sakai release Site</name>
+			<url>scp://source.sakaiproject.org/var/www/html/release/nakamura/${project.version}</url>
+		</site>
+	</distributionManagement>
 	<!-- these repos are required due to Sakai OAE depedencies and and a Solr 
 		timestamped release. -->
 	<repositories>
@@ -365,6 +481,18 @@
 				<enabled>false</enabled>
 			</snapshots>
 			<url>http://source.sakaiproject.org/maven2/</url>
+		</repository>
+		<repository>
+			<id>sakai-maven2-snapshots</id>
+			<name>Sakai Maven Repo</name>
+			<layout>default</layout>
+			<url>http://source.sakaiproject.org/maven2-snapshots</url>
+			<releases>
+				<enabled>false</enabled>
+			</releases>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
 		</repository>
 	</repositories>
 	<url>http://www.tfd.co.uk</url>
