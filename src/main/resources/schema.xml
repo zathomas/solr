@@ -532,6 +532,7 @@
    <field name="title_sort" type="lowercase" indexed="true" stored="false" />
    <field name="firstName_sort" type="lowercase" indexed="true" stored="false" />
    <field name="lastName_sort" type="lowercase" indexed="true" stored="false" />
+   <field name="general_sort" type="lowercase" indexed="true" stored="false" />
 <!-- 
    <field name="id" type="string" indexed="true" stored="true" required="true" /> 
    <field name="sku" type="textTight" indexed="true" stored="true" omitNorms="true"/>
@@ -706,6 +707,11 @@
 
    <!-- fields to copy for better faceting -->
   <copyField source="tag" dest="tagname" />
+
+  <!-- fields to copy to be sorted together from disjoint entities (users, groups, content) -->
+  <copyField source="title" dest="general_sort" />
+  <copyField source="lastName" dest="general_sort" />
+  <copyField source="filename" dest="general_sort" />
 
    <!-- Above, multiple source fields are copied to the [text] field. 
 	  Another way to map multiple source fields to the same 
