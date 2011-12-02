@@ -189,6 +189,16 @@ public class QueueManager implements Runnable {
 		notifyReader();
 	}
 
+
+	private void fireCommitEvent(String topic) {
+		Dictionary<String, Object> props = new Hashtable<String, Object>();
+
+		queueManagerDriver
+			.getEventAdmin()
+			.postEvent(new Event(topic, props));
+	}
+
+
 	private void batchedEventRun() {
 		int backoff = 0;
 		while (running) {
@@ -344,15 +354,11 @@ public class QueueManager implements Runnable {
 							updateRequest.setParam(UpdateParams.SOFT_COMMIT,
 									"true");
 							updateRequest.process(service);
+							fireCommitEvent("org/sakaiproject/nakamura/solr/SOFT_COMMIT");
+
 						} else {
 							service.commit(false, false);
-							Dictionary<String, Object> props = new Hashtable<String, Object>();
-							queueManagerDriver
-									.getEventAdmin()
-									.postEvent(
-											new Event(
-													"org/sakaiproject/nakamura/solr/COMMIT",
-													props));
+							fireCommitEvent("org/sakaiproject/nakamura/solr/COMMIT");
 						}
 					}
 					backoff = 0;
