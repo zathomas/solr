@@ -533,6 +533,8 @@
    <field name="firstName_sort" type="lowercase" indexed="true" stored="false" />
    <field name="lastName_sort" type="lowercase" indexed="true" stored="false" />
    <field name="filename_sort" type="lowercase" indexed="true" stored="false" />
+   <!-- do not use copyField to populate general_sort. see the data dictionaory for details -->
+   <!-- https://confluence.sakaiproject.org/display/KERNDOC/Data+Dictionary+for+Solr+Schema -->
    <field name="general_sort" type="lowercase" indexed="true" stored="false" />
 <!-- 
    <field name="id" type="string" indexed="true" stored="true" required="true" /> 
@@ -708,12 +710,7 @@
    <copyField source="filename" dest="filename_sort" />
 
    <!-- fields to copy for better faceting -->
-  <copyField source="tag" dest="tagname" />
-
-  <!-- fields to copy to be sorted together from disjoint entities (users, groups, content) -->
-  <copyField source="title" dest="general_sort" />
-  <copyField source="lastName" dest="general_sort" />
-  <copyField source="filename" dest="general_sort" />
+   <copyField source="tag" dest="tagname" />
 
    <!-- Above, multiple source fields are copied to the [text] field. 
 	  Another way to map multiple source fields to the same 
