@@ -236,16 +236,12 @@
     </fieldType>
 
 
-    <!-- As above, but preserves original tokens and doesn't require a
-         phrase match on queries that yield multiple tokens.  Intended
-         for fuzzier matching of usernames with varied case. -->
-    <fieldType name="text_name" class="solr.TextField" positionIncrementGap="100" autoGeneratePhraseQueries="true">
+    <!-- As above, but preserves original tokens and doesn't require a phrase match on queries that yield multiple tokens.
+      Intended for fuzzier matching of usernames with varied case. -->
+    <fieldType name="text_ci" class="solr.TextField" positionIncrementGap="100" autoGeneratePhraseQueries="true">
       <analyzer>
-        <!-- Case insensitive stop word removal.
-          add enablePositionIncrements=true in both the index and query
-          analyzers to leave a 'gap' for more accurate phrase queries.
-        -->
         <tokenizer class="solr.PatternTokenizerFactory" pattern="(\p{Punct}|\p{Space})+" />
+        <!-- Case insensitive stop word removal. -->
         <filter class="solr.StopFilterFactory" ignoreCase="true" words="stopwords.txt" enablePositionIncrements="true"/>
         <filter class="solr.LowerCaseFilterFactory"/>
         <filter class="solr.KeywordMarkerFilterFactory" protected="protwords.txt"/>
@@ -492,7 +488,7 @@
    <field name="showalways" type="boolean" indexed="true" stored="false" />
 
    <!-- sakai users -->
-   <field name="name" type="text_name" indexed="true" stored="true" termVectors="true" />
+   <field name="name" type="text_ci" indexed="true" stored="true" termVectors="true" />
    <field name="firstName" type="text" indexed="true" stored="true" />
    <field name="lastName" type="text" indexed="true" stored="true" />
    <field name="email" type="text" indexed="true" stored="true" />
