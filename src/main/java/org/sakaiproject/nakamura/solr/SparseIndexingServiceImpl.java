@@ -95,22 +95,24 @@ public class SparseIndexingServiceImpl implements IndexingHandler,
         Collection<SolrInputDocument> docs = getHandler(repositorySession, path)
             .getDocuments(repositorySession, event);
         List<SolrInputDocument> outputDocs = Lists.newArrayList();
-        for (SolrInputDocument doc : docs) {
-          for (String name : doc.getFieldNames()) {
-            // loop through the fields of the returned docs to make sure they contain
-            // atleast 1 field that is not a system property. this is not to filter out
-            // any system properties but to make sure there are more things to index than
-            // just system properties.
-            if (!SYSTEM_PROPERTIES.contains(name)) {
-              try {
-                addDefaultFields(doc, repositorySession);
-                outputDocs.add(doc);
-              } catch (StorageClientException e) {
-                LOGGER.warn("Failed to index {} cause: {} ", path, e.getMessage());
-              }
-              break;
-            }
-          }
+        if ( docs != null ) {
+	        for (SolrInputDocument doc : docs) {
+	          for (String name : doc.getFieldNames()) {
+	            // loop through the fields of the returned docs to make sure they contain
+	            // atleast 1 field that is not a system property. this is not to filter out
+	            // any system properties but to make sure there are more things to index than
+	            // just system properties.
+	            if (!SYSTEM_PROPERTIES.contains(name)) {
+	              try {
+	                addDefaultFields(doc, repositorySession);
+	                outputDocs.add(doc);
+	              } catch (StorageClientException e) {
+	                LOGGER.warn("Failed to index {} cause: {} ", path, e.getMessage());
+	              }
+	              break;
+	            }
+	          }
+	        }
         }
         return outputDocs;
       } else {

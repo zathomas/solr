@@ -292,21 +292,24 @@ public class QueueManager implements Runnable {
 									if ( repositorySession == null ) {
 										repositorySession = getRepositorySession();
 									}
-									for (String deleteQuery : contentIndexHandler
-											.getDeleteQueries(
-													repositorySession, event)) {
-										if (service != null) {
-											LOGGER.debug(
-													"Added delete Query {} ",
-													deleteQuery);
-											try {
-												service.deleteByQuery(deleteQuery);
-												needsCommit = true;
-											} catch (SolrServerException e) {
-												LOGGER.info(
-														" Failed to delete {}  cause :{}",
-														deleteQuery,
-														e.getMessage());
+									Collection<String> deleteQueries = contentIndexHandler
+									.getDeleteQueries(
+											repositorySession, event); 
+									if ( deleteQueries != null ) {
+										for (String deleteQuery : deleteQueries ) {
+											if (service != null) {
+												LOGGER.debug(
+														"Added delete Query {} ",
+														deleteQuery);
+												try {
+													service.deleteByQuery(deleteQuery);
+													needsCommit = true;
+												} catch (SolrServerException e) {
+													LOGGER.info(
+															" Failed to delete {}  cause :{}",
+															deleteQuery,
+															e.getMessage());
+												}
 											}
 										}
 									}
