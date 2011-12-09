@@ -529,8 +529,10 @@
    <field name="returnpath" type="string" indexed="true" stored="false" />
 
    <!--  general sakai -->
+   <field name="general" type="text" indexed="true" stored="false" multiValued="true" />
    <field name="ngram" type="textgen" indexed="true" stored="false" multiValued="true" />
    <field name="edgengram" type="edgetextgen" indexed="true" stored="false" multiValued="true" />   
+
    <dynamicField name="sakai*"  type="string"  indexed="true"  stored="true"/>
    <dynamicField name="random_*" type="random" indexed="true" stored="false"/>
 
@@ -689,7 +691,8 @@
    <copyField source="includes" dest="text"/>
    <copyField source="manu" dest="manu_exact"/>
  -->
-   <!-- fields to copy to ngram field for searching -->
+   <!-- fields to copy to ngram field for better searching
+    in the middle of a term -->
    <copyField source="content" dest="ngram"/>
    <copyField source="filename" dest="ngram"/>
    <copyField source="tag" dest="ngram"/>
@@ -701,7 +704,8 @@
    <copyField source="description" dest="ngram"/>
    <copyField source="widgetdata" dest="ngram"/>
 
-   <!-- fields to copy to ngram field for searching -->
+   <!-- fields to copy to edgengram field for better searching on
+    strings that "start with <query>" -->
    <copyField source="content" dest="edgengram"/>
    <copyField source="filename" dest="edgengram"/>
    <copyField source="tag" dest="edgengram"/>
@@ -712,6 +716,19 @@
    <copyField source="title" dest="edgengram"/>
    <copyField source="description" dest="edgengram"/>
    <copyField source="widgetdata" dest="edgengram"/>
+
+   <!-- field to copy to general field for better searching on
+    lots of fields at once -->
+   <copyField source="content" dest="general"/>
+   <copyField source="filename" dest="general"/>
+   <copyField source="tag" dest="general"/>
+   <copyField source="name" dest="general"/>
+   <copyField source="firstName" dest="general"/>
+   <copyField source="lastName" dest="general"/>
+   <copyField source="email" dest="general"/>
+   <copyField source="title" dest="general"/>
+   <copyField source="description" dest="general"/>
+   <copyField source="widgetdata" dest="general"/>
 
    <!-- fields to copy to simpler processing for better sorting -->
    <copyField source="_created" dest="_created_sort" />
