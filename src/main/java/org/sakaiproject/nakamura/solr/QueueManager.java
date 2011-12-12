@@ -101,7 +101,7 @@ public class QueueManager implements Runnable {
 
 	public synchronized void start() {
 		if (!running) {
-      running = true;
+			running = true;
 			queueDispatcher = new Thread(this);
 			queueDispatcher.setName("IndexQueueManager" + queueName);
 			queueDispatcher.start();
