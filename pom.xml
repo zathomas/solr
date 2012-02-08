@@ -228,6 +228,7 @@
 
 
 
+
 		<!-- We also need slf4j -->
 		<dependency>
 			<groupId>org.slf4j</groupId>
@@ -299,6 +300,14 @@
 			<!-- just needed for compiling, not runtime -->
 		</dependency>
 
+		<dependency>
+			<groupId>org.apache.hadoop</groupId>
+			<artifactId>hadoop-core</artifactId>
+			<version>1.0.0</version>
+			<type>jar</type>
+			<scope>test</scope>
+                        <!-- needed for the bloom test  -->
+		</dependency>
 	</dependencies>
 	<reporting>
 		<plugins>
