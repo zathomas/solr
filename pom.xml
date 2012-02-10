@@ -152,6 +152,7 @@
 							com.ctc.wstx.stax;resolution:=optional,
 							org.mortbay.*;resolution:=optional,
 							javax.servlet.jsp.*;resolution:=optional,
+						        com.google.common.collect; version="9.0.0",
 							*
              </Import-Package>
 						<Private-Package>
@@ -259,11 +260,10 @@
 			<artifactId>org.sakaiproject.nakamura.core</artifactId>
 			<version>1.2</version>
 		</dependency>
-
 		<dependency>
-			<groupId>com.google.guava</groupId>
-			<artifactId>guava</artifactId>
-			<version>10.0.1</version>
+			<groupId>com.googlecode.guava-osgi</groupId>
+			<artifactId>guava-osgi</artifactId>
+			<version>9.0.0</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
