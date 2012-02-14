@@ -381,6 +381,11 @@ public class QueueManager implements Runnable {
 
 						rollback();
 						Thread.sleep(1000 * backoff);
+					} else if (e.getMessage().contains("try again")) {
+						LOGGER.warn(
+							"Received transient Solr exception, will retry index operation in 100ms", e);
+						rollback();
+						Thread.sleep(100);
 					} else {
 						LOGGER.warn(
 								" Batch Operation completed with Errors, the index may have lost data, please FIX ASAP. "
